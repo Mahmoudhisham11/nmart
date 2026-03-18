@@ -1,0 +1,18 @@
+{
+  "name": "Nmart POS & Market Management",
+  "short_name": "Nmart",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Nmart – POS and market management system for small retail stores.",
+  "icons": [
+    {
+      "src": "/vercel.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+
+
