@@ -1,0 +1,586 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+[data-theme="dark"] .title {
+  color: #e5e7eb;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0 0 16px;
+  line-height: 1.6;
+}
+
+[data-theme="dark"] .muted {
+  color: #94a3b8;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .filterRow {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.dateLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .dateLabel {
+  color: #cbd5e1;
+}
+
+.dateIcon {
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+.dateInputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.dateInput {
+  min-width: 200px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+}
+
+[data-theme="dark"] .dateInput {
+  border-color: #475569;
+  background: #1e293b;
+  color: #e5e7eb;
+}
+
+.dateInput:focus {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+}
+
+.clearDateBtn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .clearDateBtn {
+  border-color: #475569;
+  background: #334155;
+  color: #cbd5e1;
+}
+
+.clearDateBtn:hover {
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .clearDateBtn:hover {
+  background: #475569;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .listPane {
+    max-height: 45vh;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .dateInput {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+.listPane {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+[data-theme="dark"] .listPane {
+  border-color: #334155;
+}
+
+.dayList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dayBtn {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 12px 14px;
+  text-align: right;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font: inherit;
+  transition: background 0.15s ease;
+}
+
+[data-theme="dark"] .dayBtn {
+  background: #1e293b;
+  border-bottom-color: #334155;
+  color: #e5e7eb;
+}
+
+.dayBtn:hover {
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .dayBtn:hover {
+  background: #334155;
+}
+
+.dayBtnActive {
+  background: #fff7ed;
+  border-inline-start: 4px solid #ea580c;
+}
+
+[data-theme="dark"] .dayBtnActive {
+  background: rgba(234, 88, 12, 0.15);
+}
+
+.dayKey {
+  font-weight: 800;
+  font-size: 15px;
+  color: #111827;
+}
+
+[data-theme="dark"] .dayKey {
+  color: #e5e7eb;
+}
+
+.dayMeta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.detailPane {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 200px;
+  background: #fafafa;
+}
+
+[data-theme="dark"] .detailPane {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.detailHeader {
+  margin-bottom: 16px;
+}
+
+.detailTitle {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #111827;
+}
+
+[data-theme="dark"] .detailTitle {
+  color: #e5e7eb;
+}
+
+.summaryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summaryChip {
+  font-size: 13px;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .summaryChip {
+  color: #cbd5e1;
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.subTitle {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #374151;
+}
+
+[data-theme="dark"] .subTitle {
+  color: #cbd5e1;
+}
+
+.invoiceList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invoiceListItem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.invoiceItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .invoiceItem {
+  background: #1e293b;
+  border-color: #334155;
+  color: inherit;
+}
+
+.invoiceItem:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.invoiceLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.invoiceIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  flex: 0 0 auto;
+}
+
+[data-theme="dark"] .invoiceIcon {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.invoiceMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoiceNumber {
+  font-weight: 800;
+  color: #111827;
+  font-size: 14px;
+}
+
+[data-theme="dark"] .invoiceNumber {
+  color: #e5e7eb;
+}
+
+.invoiceSub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .invoiceSub {
+  color: #94a3b8;
+}
+
+.invoiceTotal {
+  font-weight: 900;
+  color: #10b981;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .invoiceTotal {
+  color: #34d399;
+}
+
+.invoiceEmpty {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.invoiceModalMeta {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .invoiceModalMeta {
+  color: #94a3b8;
+}
+
+.invoiceDetailTableWrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .invoiceDetailTableWrap {
+  border-color: #334155;
+}
+
+.invoiceDetailTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.invoiceDetailTable th,
+.invoiceDetailTable td {
+  padding: 10px 12px;
+  text-align: right;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .invoiceDetailTable th,
+[data-theme="dark"] .invoiceDetailTable td {
+  border-bottom-color: #334155;
+}
+
+.invoiceDetailTable th {
+  font-weight: 700;
+  color: #374151;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .invoiceDetailTable th {
+  color: #cbd5e1;
+  background: #0f172a;
+}
+
+.invoiceDetailTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.lineKindBadge {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+[data-theme="dark"] .lineKindBadge {
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10001;
+}
+
+.modal {
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme="dark"] .modal {
+  background: #1e293b;
+}
+
+.modalHeader {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+[data-theme="dark"] .modalHeader {
+  border-bottom-color: #334155;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+[data-theme="dark"] .modalTitle {
+  color: #e5e7eb;
+}
+
+.modalClose {
+  border: none;
+  background: transparent;
+  font-size: 26px;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.modalClose:hover {
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .modalClose:hover {
+  background: #334155;
+  color: #e5e7eb;
+}
+
+.modalBody {
+  padding: 18px 20px;
+}
+
+.modalFooter {
+  padding: 14px 20px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #f3f4f6;
+}
+
+[data-theme="dark"] .modalFooter {
+  border-top-color: #334155;
+}
+
+.modalButtonSecondary {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .modalButtonSecondary {
+  background: #334155;
+  border-color: #475569;
+  color: #cbd5e1;
+}

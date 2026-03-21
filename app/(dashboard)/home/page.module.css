@@ -7,7 +7,7 @@
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 20px;
 }
 
@@ -89,6 +89,17 @@
   line-height: 1.5;
 }
 
+.muted {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+[data-theme="dark"] .muted {
+  color: #94a3b8;
+}
+
 [data-theme="dark"] .cardHint {
   color: #64748b;
 }
@@ -99,11 +110,31 @@
   gap: 20px;
 }
 
+.closeDayPanel {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .panelHeaderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.panelHeaderRow .panelTitle {
+  margin-bottom: 0;
+}
+
+.subsectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #374151;
+  margin: 16px 0 10px;
+}
+
+[data-theme="dark"] .subsectionTitle {
+  color: #cbd5e1;
 }
 
 .closeDayButton {
@@ -144,6 +175,12 @@
   gap: 10px;
 }
 
+.invoiceListItem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .invoiceEmpty {
   font-size: 13px;
   color: #9ca3af;
@@ -158,21 +195,32 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   padding: 12px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #ffffff;
   transition: all 0.2s ease;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
 [data-theme="dark"] .invoiceItem {
   background: #1e293b;
   border-color: #334155;
+  color: inherit;
 }
 
 .invoiceItem:hover {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
+}
+
+.invoiceItem:focus-visible {
+  outline: 2px solid #ea580c;
+  outline-offset: 2px;
 }
 
 [data-theme="dark"] .invoiceItem:hover {
@@ -244,6 +292,75 @@
 
 [data-theme="dark"] .invoiceTotal {
   color: #34d399;
+}
+
+.invoiceModalMeta {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .invoiceModalMeta {
+  color: #94a3b8;
+}
+
+.invoiceDetailTableWrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .invoiceDetailTableWrap {
+  border-color: #334155;
+}
+
+.invoiceDetailTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.invoiceDetailTable th,
+.invoiceDetailTable td {
+  padding: 10px 12px;
+  text-align: right;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .invoiceDetailTable th,
+[data-theme="dark"] .invoiceDetailTable td {
+  border-bottom-color: #334155;
+}
+
+.invoiceDetailTable th {
+  font-weight: 700;
+  color: #374151;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .invoiceDetailTable th {
+  color: #cbd5e1;
+  background: #0f172a;
+}
+
+.invoiceDetailTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.lineKindBadge {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+[data-theme="dark"] .lineKindBadge {
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
 }
 
 .summaryGrid {
@@ -570,5 +687,15 @@
 
   .twoColumns {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .cardValue {
+    font-size: 28px;
+  }
+
+  .closeDayPanel {
+    padding-bottom: 12px;
   }
 }

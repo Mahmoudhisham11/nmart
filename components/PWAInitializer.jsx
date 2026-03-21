@@ -1,26 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-
+/**
+ * تسجيل الـ Service Worker يتم تلقائياً عبر `@ducanh2912/next-pwa` عند `register: true`
+ * في `next.config.mjs` بعد `next build`. هذا المكوّن يُبقى كامتداد مستقبلي (مثلاً تحديث يدوي).
+ */
 export function PWAInitializer() {
-  useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      process.env.NODE_ENV !== "production"
-    ) {
-      return;
-    }
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .catch((error) =>
-          console.error("Service worker registration failed:", error)
-        );
-    }
-  }, []);
-
   return null;
 }
-
-

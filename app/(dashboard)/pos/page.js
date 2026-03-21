@@ -22,14 +22,38 @@ export default function POSPage() {
 
   const [barcodeInput, setBarcodeInput] = useState("");
   const [cartItems, setCartItems] = useState([]);
+  const [drinks, setDrinks] = useState([]);
+  const [loadingDrinks, setLoadingDrinks] = useState(true);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    // تركيز تلقائي على حقل الباركود
     const t = setTimeout(() => barcodeRef.current?.focus(), 50);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const loadDrinks = async () => {
+      try {
+        setLoadingDrinks(true);
+        const snap = await getDocs(collection(firestore, "drinks"));
+        const list = [];
+        snap.forEach((row) => {
+          const data = row.data();
+          if (data.active !== false) {
+            list.push({ id: row.id, ...data });
+          }
+        });
+        list.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+        setDrinks(list);
+      } catch (e) {
+        console.error("خطأ في تحميل المشاريب", e);
+      } finally {
+        setLoadingDrinks(false);
+      }
+    };
+    loadDrinks();
   }, []);
 
   const showNotification = (message, type = "error") => {
@@ -63,7 +87,6 @@ export default function POSPage() {
 
     const productsRef = collection(firestore, "products");
 
-    // 1) محاولة البحث بالباركود
     const qBarcode = query(productsRef, where("barcode", "==", cleaned));
     const snapBarcode = await getDocs(qBarcode);
     if (!snapBarcode.empty) {
@@ -71,7 +94,6 @@ export default function POSPage() {
       return { id: docSnap.id, ...docSnap.data() };
     }
 
-    // 2) محاولة البحث بالكود (code) لو المستخدم بيستخدمه بدل الباركود
     const qCode = query(productsRef, where("code", "==", cleaned));
     const snapCode = await getDocs(qCode);
     if (!snapCode.empty) {
@@ -82,12 +104,10 @@ export default function POSPage() {
     return null;
   };
 
-  // مزامنة منتج من فواتير الشراء إلى products (لو المنتج موجود في purchases فقط)
   const syncProductFromPurchases = async (codeOrBarcode) => {
     const cleaned = String(codeOrBarcode || "").trim();
     if (!cleaned) return null;
 
-    // نجلب فواتير الشراء ونبحث محلياً داخل products array (MVP)
     const purchasesRef = collection(firestore, "purchases");
     const purchasesSnap = await getDocs(purchasesRef);
 
@@ -100,7 +120,7 @@ export default function POSPage() {
         const code = String(p.code ?? "").trim();
         const barcode = String(p.barcode ?? "").trim();
         if (code === cleaned || barcode === cleaned) {
-          foundLine = foundLine || p; // أول مرة نلاقي فيها المنتج
+          foundLine = foundLine || p;
           totalPurchasedQty += Number(p.quantity || 0);
         }
       });
@@ -108,7 +128,6 @@ export default function POSPage() {
 
     if (!foundLine) return null;
 
-    // خصم الكميات المباعة من sales (لو موجودة)
     let totalSoldQty = 0;
     try {
       const salesRef = collection(firestore, "sales");
@@ -117,6 +136,7 @@ export default function POSPage() {
         const data = d.data();
         const items = Array.isArray(data.items) ? data.items : [];
         items.forEach((it) => {
+          if (it.itemType === "drink") return;
           const code = String(it.code ?? "").trim();
           const barcode = String(it.barcode ?? "").trim();
           if (code === cleaned || barcode === cleaned) {
@@ -125,12 +145,11 @@ export default function POSPage() {
         });
       });
     } catch (e) {
-      // لو sales مش موجودة/صلاحيات.. نكمل على المشتريات فقط
+      // ignore
     }
 
     const netQty = Math.max(0, totalPurchasedQty - totalSoldQty);
 
-    // إنشاء المنتج في المخزون (products) عشان يبقى قابل للبيع
     const nameAr = String(foundLine.name ?? foundLine.nameAr ?? "منتج").trim();
     const code = String(foundLine.code ?? cleaned).trim();
     const barcode = String(foundLine.barcode ?? cleaned).trim();
@@ -162,6 +181,9 @@ export default function POSPage() {
     };
   };
 
+  const lineKeyProduct = (id) => `product:${id}`;
+  const lineKeyDrink = (id) => `drink:${id}`;
+
   const addProductToCart = (product) => {
     const available = typeof product.quantity === "number" ? product.quantity : 0;
     if (available < 1) {
@@ -169,12 +191,16 @@ export default function POSPage() {
       return;
     }
 
+    const key = lineKeyProduct(product.id);
+
     setCartItems((prev) => {
-      const existing = prev.find((x) => x.productId === product.id);
+      const existing = prev.find((x) => x.lineKey === key);
       if (!existing) {
         return [
           ...prev,
           {
+            lineKey: key,
+            kind: "product",
             productId: product.id,
             nameAr: product.nameAr || product.name || "منتج",
             barcode: product.barcode || "",
@@ -197,7 +223,35 @@ export default function POSPage() {
       }
 
       return prev.map((x) =>
-        x.productId === product.id ? { ...x, quantity: newQty } : x
+        x.lineKey === key ? { ...x, quantity: newQty } : x
+      );
+    });
+  };
+
+  const addDrinkToCart = (drink) => {
+    const price = Number(drink.price || 0);
+    const key = lineKeyDrink(drink.id);
+
+    setCartItems((prev) => {
+      const existing = prev.find((x) => x.lineKey === key);
+      if (!existing) {
+        return [
+          ...prev,
+          {
+            lineKey: key,
+            kind: "drink",
+            drinkId: drink.id,
+            nameAr: drink.name || "مشروب",
+            barcode: "",
+            quantity: 1,
+            unitPrice: price,
+            costPrice: 0,
+            availableQuantity: null,
+          },
+        ];
+      }
+      return prev.map((x) =>
+        x.lineKey === key ? { ...x, quantity: (x.quantity || 0) + 1 } : x
       );
     });
   };
@@ -211,7 +265,6 @@ export default function POSPage() {
       setSearching(true);
       let product = await findProductByBarcodeOrCode(barcode);
 
-      // لو المنتج مش موجود في products لكن موجود في فواتير الشراء -> مزامنة تلقائية
       if (!product) {
         const synced = await syncProductFromPurchases(barcode);
         if (synced) {
@@ -236,17 +289,20 @@ export default function POSPage() {
     }
   };
 
-  const removeCartItem = (productId) => {
-    setCartItems((prev) => prev.filter((x) => x.productId !== productId));
+  const removeCartItem = (lineKey) => {
+    setCartItems((prev) => prev.filter((x) => x.lineKey !== lineKey));
   };
 
-  const setCartItemQuantity = (productId, nextQty) => {
+  const setCartItemQuantity = (lineKey, nextQty) => {
     const qty = Math.floor(Number(nextQty || 0));
     if (qty < 1) return;
 
     setCartItems((prev) =>
       prev.map((x) => {
-        if (x.productId !== productId) return x;
+        if (x.lineKey !== lineKey) return x;
+        if (x.kind === "drink") {
+          return { ...x, quantity: qty };
+        }
         if (qty > (x.availableQuantity ?? 0)) {
           showNotification(
             "الكمية المطلوبة أكبر من الكمية المتاحة في المخزون",
@@ -259,18 +315,22 @@ export default function POSPage() {
     );
   };
 
-  const incQty = (productId) => {
-    const it = cartItems.find((x) => x.productId === productId);
+  const incQty = (lineKey) => {
+    const it = cartItems.find((x) => x.lineKey === lineKey);
     if (!it) return;
-    setCartItemQuantity(productId, (it.quantity || 0) + 1);
+    if (it.kind === "drink") {
+      setCartItemQuantity(lineKey, (it.quantity || 0) + 1);
+      return;
+    }
+    setCartItemQuantity(lineKey, (it.quantity || 0) + 1);
   };
 
-  const decQty = (productId) => {
-    const it = cartItems.find((x) => x.productId === productId);
+  const decQty = (lineKey) => {
+    const it = cartItems.find((x) => x.lineKey === lineKey);
     if (!it) return;
     const next = (it.quantity || 0) - 1;
     if (next < 1) return;
-    setCartItemQuantity(productId, next);
+    setCartItemQuantity(lineKey, next);
   };
 
   const generateSaleInvoiceNumber = () => `S-${Date.now()}`;
@@ -283,9 +343,12 @@ export default function POSPage() {
 
     try {
       setSubmitting(true);
-      // منع البيع بعد تقفيل اليوم
       const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const startOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
       const dayKey = startOfDay.toISOString().slice(0, 10);
       try {
         const closeRef = doc(firestore, "dayClosures", dayKey);
@@ -295,17 +358,16 @@ export default function POSPage() {
           return;
         }
       } catch (e) {
-        // تجاهل
+        // ignore
       }
 
       const invoiceNumber = generateSaleInvoiceNumber();
       const createdAt = new Date().toISOString();
+      const productLines = cartItems.filter((it) => it.kind === "product");
 
-      // Transaction: تأكيد المخزون وتحديثه + إنشاء فاتورة البيع بشكل آمن
       await runTransaction(firestore, async (tx) => {
-        // 1) قراءة المنتجات والتحقق من الكميات
         const productSnaps = {};
-        for (const it of cartItems) {
+        for (const it of productLines) {
           const ref = doc(firestore, "products", it.productId);
           const snap = await tx.get(ref);
           if (!snap.exists()) {
@@ -314,7 +376,7 @@ export default function POSPage() {
           productSnaps[it.productId] = { ref, snap };
         }
 
-        for (const it of cartItems) {
+        for (const it of productLines) {
           const { snap } = productSnaps[it.productId];
           const data = snap.data();
           const available =
@@ -324,8 +386,7 @@ export default function POSPage() {
           }
         }
 
-        // 2) تحديث المخزون
-        for (const it of cartItems) {
+        for (const it of productLines) {
           const { ref, snap } = productSnaps[it.productId];
           const data = snap.data();
           const available =
@@ -337,7 +398,6 @@ export default function POSPage() {
           });
         }
 
-        // 3) إنشاء فاتورة البيع
         const salesRef = collection(firestore, "sales");
         const totalAmount = cartItems.reduce(
           (sum, it) => sum + (it.quantity || 0) * (it.unitPrice || 0),
@@ -348,9 +408,20 @@ export default function POSPage() {
           0
         );
 
-        tx.set(doc(salesRef), {
-          invoiceNumber,
-          items: cartItems.map((it) => ({
+        const itemsPayload = cartItems.map((it) => {
+          if (it.kind === "drink") {
+            return {
+              itemType: "drink",
+              drinkId: it.drinkId,
+              nameAr: it.nameAr,
+              quantity: it.quantity,
+              unitPrice: it.unitPrice,
+              total: (it.quantity || 0) * (it.unitPrice || 0),
+              costPrice: 0,
+              barcode: "",
+            };
+          }
+          return {
             productId: it.productId,
             nameAr: it.nameAr,
             barcode: it.barcode,
@@ -358,7 +429,12 @@ export default function POSPage() {
             unitPrice: it.unitPrice,
             total: (it.quantity || 0) * (it.unitPrice || 0),
             costPrice: it.costPrice || 0,
-          })),
+          };
+        });
+
+        tx.set(doc(salesRef), {
+          invoiceNumber,
+          items: itemsPayload,
           totalAmount,
           totalCost,
           paymentMethod: "نقدي",
@@ -393,7 +469,6 @@ export default function POSPage() {
 
   return (
     <div className={styles.wrapper}>
-      {/* Toast Notifications */}
       <div className={styles.notificationsContainer}>
         {notifications.map((n) => (
           <div
@@ -456,9 +531,37 @@ export default function POSPage() {
         </button>
       </form>
 
+      <section className={styles.drinksSection}>
+        <h3 className={styles.drinksTitle}>المشاريب</h3>
+        {loadingDrinks ? (
+          <p className={styles.drinksHint}>جارٍ تحميل المشاريب...</p>
+        ) : drinks.length === 0 ? (
+          <p className={styles.drinksHint}>
+            لا توجد مشاريب مفعّلة. أضف مشاريب من صفحة المشاريب.
+          </p>
+        ) : (
+          <div className={styles.drinksGrid}>
+            {drinks.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={styles.drinkChip}
+                onClick={() => addDrinkToCart(d)}
+                disabled={submitting}
+              >
+                <span className={styles.drinkName}>{d.name || "مشروب"}</span>
+                <span className={styles.drinkPrice}>
+                  {formatCurrency(Number(d.price || 0))}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
       {cartItems.length === 0 ? (
         <div className={styles.emptyState}>
-          <p>السلة فارغة. ابدأ بمسح/إدخال باركود منتج.</p>
+          <p>السلة فارغة. أضف منتجًا بالباركود أو اختر مشروبًا من القائمة.</p>
         </div>
       ) : (
         <div className={styles.cartSection}>
@@ -466,7 +569,7 @@ export default function POSPage() {
             <table>
               <thead>
                 <tr>
-                  <th>المنتج</th>
+                  <th>الصنف</th>
                   <th>الباركود</th>
                   <th>الكمية</th>
                   <th>سعر الوحدة</th>
@@ -476,20 +579,24 @@ export default function POSPage() {
               </thead>
               <tbody>
                 {cartItems.map((it) => (
-                  <tr key={it.productId}>
+                  <tr key={it.lineKey}>
                     <td className={styles.nameCell}>
                       <div className={styles.nameMain}>{it.nameAr}</div>
                       <div className={styles.nameSub}>
-                        المتاح: {it.availableQuantity ?? 0}
+                        {it.kind === "product" ? (
+                          <>المتاح: {it.availableQuantity ?? 0}</>
+                        ) : (
+                          <>مشروب</>
+                        )}
                       </div>
                     </td>
-                    <td>{it.barcode}</td>
+                    <td>{it.kind === "product" ? it.barcode : "—"}</td>
                     <td>
                       <div className={styles.qtyControls}>
                         <button
                           type="button"
                           className={styles.qtyBtn}
-                          onClick={() => decQty(it.productId)}
+                          onClick={() => decQty(it.lineKey)}
                           disabled={submitting || (it.quantity || 1) <= 1}
                           title="تقليل"
                         >
@@ -501,17 +608,18 @@ export default function POSPage() {
                           value={it.quantity}
                           min={1}
                           onChange={(e) =>
-                            setCartItemQuantity(it.productId, e.target.value)
+                            setCartItemQuantity(it.lineKey, e.target.value)
                           }
                           disabled={submitting}
                         />
                         <button
                           type="button"
                           className={styles.qtyBtn}
-                          onClick={() => incQty(it.productId)}
+                          onClick={() => incQty(it.lineKey)}
                           disabled={
                             submitting ||
-                            (it.quantity || 0) >= (it.availableQuantity ?? 0)
+                            (it.kind === "product" &&
+                              (it.quantity || 0) >= (it.availableQuantity ?? 0))
                           }
                           title="زيادة"
                         >
@@ -527,7 +635,7 @@ export default function POSPage() {
                       <button
                         type="button"
                         className={styles.removeButton}
-                        onClick={() => removeCartItem(it.productId)}
+                        onClick={() => removeCartItem(it.lineKey)}
                         disabled={submitting}
                         title="حذف"
                       >
@@ -566,5 +674,3 @@ export default function POSPage() {
     </div>
   );
 }
-
-

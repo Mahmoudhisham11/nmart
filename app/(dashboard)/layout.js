@@ -3,19 +3,17 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { FaMoon, FaSun, FaSignOutAlt } from "react-icons/fa";
+import { FaBars, FaMoon, FaSignOutAlt, FaSun } from "react-icons/fa";
 import { AuthProvider, useAuth } from "@/components/AuthContext";
 import styles from "./dashboardLayout.module.css";
 
 const NAV_ITEMS = [
   { href: "/home", label: "الرئيسية", roles: ["owner", "manager", "cashier"] },
-  { href: "/pos", label: "نقطة البيع", roles: ["owner", "manager", "cashier"] },
+  { href: "/drinks", label: "المشاريب", roles: ["owner", "manager"] },
   { href: "/products", label: "المنتجات", roles: ["owner", "manager"] },
-  { href: "/suppliers", label: "الموردون", roles: ["owner", "manager"] },
-  { href: "/purchases", label: "فواتير الشراء", roles: ["owner", "manager"] },
-  { href: "/employees", label: "الموظفون", roles: ["owner"] },
-  { href: "/reports", label: "التقارير", roles: ["owner", "manager"] },
-  { href: "/settings", label: "الإعدادات", roles: ["owner"] },
+  { href: "/pos", label: "نقطة البيع", roles: ["owner", "manager", "cashier"] },
+  { href: "/day-closures", label: "تقفيلات الأيام", roles: ["owner", "manager"] },
+  { href: "/settings", label: "الإعدادات", roles: ["owner", "manager", "cashier"] },
 ];
 
 function DashboardShell({ children }) {
@@ -23,6 +21,8 @@ function DashboardShell({ children }) {
   const pathname = usePathname();
   const { user, profile, loading, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobileNav, setIsMobileNav] = useState(false);
   const [theme, setTheme] = useState("light");
   const dropdownRef = useRef(null);
 
@@ -37,6 +37,14 @@ function DashboardShell({ children }) {
     const savedTheme = localStorage.getItem("nmart-theme") || "light";
     setTheme(savedTheme);
     document.documentElement.setAttribute("data-theme", savedTheme);
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileNav(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
@@ -56,6 +64,29 @@ function DashboardShell({ children }) {
     };
   }, [showDropdown]);
 
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   if (loading || !user) {
     return (
       <main className={styles.root}>
@@ -74,6 +105,7 @@ function DashboardShell({ children }) {
 
   const handleNavClick = (href) => {
     router.push(href);
+    setSidebarOpen(false);
   };
 
   const handleLogout = async () => {
@@ -102,9 +134,46 @@ function DashboardShell({ children }) {
     year: "numeric",
   });
 
+  const pageMeta = {
+    "/home": {
+      title: "لوحة التحكم",
+      description: "متابعة المبيعات والمخزون اليومي",
+    },
+    "/settings": {
+      title: "صفحة الإعدادات",
+      description: "هنا يمكنك تعديل بيانات حسابك وإدارة صلاحيات المستخدمين",
+    },
+    "/drinks": {
+      title: "إدارة المشاريب",
+      description: "إضافة وتحديث أسعار المشاريب المتاحة للبيع",
+    },
+    "/products": {
+      title: "إدارة المنتجات",
+      description: "عرض وإضافة دفعات وتعديل وحذف المنتجات والمخزون",
+    },
+    "/day-closures": {
+      title: "تقفيلات الأيام",
+      description: "مراجعة تقفيلات سابقة وفواتير كل يوم بعد الأرشفة",
+    },
+  };
+  const pageTitle = pageMeta[pathname]?.title || "لوحة التحكم";
+  const pageDescription = pageMeta[pathname]?.description || "متابعة المبيعات والمخزون";
+
   return (
     <main className={styles.root}>
-      <aside className={styles.sidebar}>
+      {sidebarOpen ? (
+        <button
+          type="button"
+          className={styles.backdrop}
+          aria-label="إغلاق القائمة"
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
+      <aside
+        className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}
+        id="dashboard-sidebar"
+        aria-hidden={isMobileNav && !sidebarOpen ? true : undefined}
+      >
         <div className={styles.brand}>
           <Image
             src="/images/logo.png"
@@ -115,7 +184,7 @@ function DashboardShell({ children }) {
             priority
           />
         </div>
-        <nav className={styles.nav}>
+        <nav className={styles.nav} aria-label="التنقل الرئيسي">
           {visibleNav.map((item) => {
             const active = pathname === item.href;
             return (
@@ -135,6 +204,16 @@ function DashboardShell({ children }) {
       </aside>
       <section className={styles.main}>
         <header className={styles.topbar}>
+          <button
+            type="button"
+            className={styles.menuButton}
+            aria-label="فتح القائمة"
+            aria-expanded={sidebarOpen}
+            aria-controls="dashboard-sidebar"
+            onClick={() => setSidebarOpen((o) => !o)}
+          >
+            <FaBars />
+          </button>
           <div className={styles.searchContainer}>
             <input
               type="text"
@@ -182,12 +261,10 @@ function DashboardShell({ children }) {
           </div>
         </header>
         <section className={styles.content}>
-          {pathname !== "/suppliers" && pathname !== "/purchases" && pathname !== "/pos" && (
+          {pathname !== "/pos" && (
             <div className={styles.pageHeader}>
-              <h1 className={styles.pageTitle}>لوحة التحكم</h1>
-              <p className={styles.pageDescription}>
-                هنا تفاصيل تحليلات المتجر الخاصة بك
-              </p>
+              <h1 className={styles.pageTitle}>{pageTitle}</h1>
+              <p className={styles.pageDescription}>{pageDescription}</p>
             </div>
           )}
           {children}

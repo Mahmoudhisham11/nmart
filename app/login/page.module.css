@@ -395,6 +395,27 @@
   transform: translateY(0);
 }
 
+@media (max-width: 900px) {
+  .page {
+    padding: 16px;
+  }
+
+  .container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 40px;
+  }
+
+  .logoSection {
+    justify-content: center;
+    max-width: 100%;
+  }
+
+  .formSection {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 640px) {
   .container {
     gap: 32px;

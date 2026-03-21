@@ -1,18 +1,27 @@
 {
-  "name": "Nmart POS & Market Management",
+  "name": "Nmart",
   "short_name": "Nmart",
+  "description": "نظام Nmart لإدارة المبيعات والمخزون ونقطة البيع.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "description": "Nmart – POS and market management system for small retail stores.",
+  "lang": "ar",
+  "dir": "rtl",
   "icons": [
     {
-      "src": "/vercel.svg",
+      "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
-
-
