@@ -187,8 +187,15 @@ export default function POSPage() {
     }, 5000);
   };
 
+  const locale = useMemo(() => {
+    if (typeof window === "undefined") return "ar-EG-u-nu-latn";
+    const lang = String(window.navigator?.language || "ar-EG").toLowerCase();
+    if (lang.startsWith("ar")) return "ar-EG-u-nu-latn";
+    return "en-US";
+  }, []);
+
   const formatCurrency = (value) =>
-    new Intl.NumberFormat("ar-EG", {
+    new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "EGP",
       maximumFractionDigits: 0,
@@ -953,7 +960,7 @@ export default function POSPage() {
                 <div className={styles.receiptMetaRow}>
                   التاريخ:{" "}
                   <strong>
-                    {new Date(printReceipt.createdAt).toLocaleString("ar-EG", {
+                    {new Date(printReceipt.createdAt).toLocaleString(locale, {
                       year: "numeric",
                       month: "2-digit",
                       day: "2-digit",
