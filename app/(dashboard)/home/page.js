@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   collection,
   doc,
-  getDoc,
+  getCountFromServer,
   getDocs,
   query,
   setDoc,
@@ -32,28 +32,15 @@ export default function HomeDashboardPage() {
   const [lowStockCount, setLowStockCount] = useState(0);
   const [topProducts, setTopProducts] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
-  const [dayClosed, setDayClosed] = useState(false);
   const [closing, setClosing] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null);
 
   useEffect(() => {
     const loadStats = async () => {
-      const today = new Date();
-      const startOfDay = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
-      const dayKey = startOfDay.toISOString().slice(0, 10);
-
       try {
         const salesRef = collection(firestore, "sales");
-        const salesQuery = query(
-          salesRef,
-          where("createdAt", ">=", startOfDay.toISOString())
-        );
-        const salesSnap = await getDocs(salesQuery);
+        const salesSnap = await getDocs(salesRef);
         let totalRevenue = 0;
         let totalCost = 0;
         const invoiceRows = [];
@@ -109,14 +96,6 @@ export default function HomeDashboardPage() {
       } catch (e) {
         // optional collection
       }
-
-      try {
-        const closeRef = doc(firestore, "dayClosures", dayKey);
-        const closeSnap = await getDoc(closeRef);
-        setDayClosed(closeSnap.exists());
-      } catch (e) {
-        // ignore
-      }
     };
 
     loadStats();
@@ -149,32 +128,19 @@ export default function HomeDashboardPage() {
     return Array.isArray(raw) ? raw : [];
   };
 
-  const handleCloseDay = async () => {
-    const today = new Date();
-    const startOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-    const dayKey = startOfDay.toISOString().slice(0, 10);
+  const handleCloseShift = async () => {
+    const nowDate = new Date();
+    const dayKey = nowDate.toISOString().slice(0, 10);
 
     try {
       setClosing(true);
-      const closeRef = doc(firestore, "dayClosures", dayKey);
-      const existing = await getDoc(closeRef);
-      if (existing.exists()) {
-        setDayClosed(true);
-        return;
-      }
-
       const salesRef = collection(firestore, "sales");
-      const salesQuery = query(
-        salesRef,
-        where("createdAt", ">=", startOfDay.toISOString())
-      );
-      const salesSnap = await getDocs(salesQuery);
+      const salesSnap = await getDocs(salesRef);
       const saleDocs = [];
       salesSnap.forEach((d) => saleDocs.push(d));
+      if (saleDocs.length === 0) {
+        return;
+      }
 
       let totalRevenue = 0;
       let totalCost = 0;
@@ -184,14 +150,22 @@ export default function HomeDashboardPage() {
         totalCost += data.totalCost || 0;
       }
       const invoicesCount = saleDocs.length;
-      const now = new Date().toISOString();
+      const now = nowDate.toISOString();
+      const qTodayShifts = query(
+        collection(firestore, "shiftClosures"),
+        where("dayKey", "==", dayKey)
+      );
+      const todayShiftsCountSnap = await getCountFromServer(qTodayShifts);
+      const shiftNumber = (todayShiftsCountSnap.data()?.count || 0) + 1;
+      const shiftRef = doc(collection(firestore, "shiftClosures"));
+      const shiftId = shiftRef.id;
 
       const stripUndefined = (o) =>
         Object.fromEntries(
           Object.entries(o).filter(([, v]) => v !== undefined)
         );
 
-      /** نقل كل فاتورة اليوم إلى dayClosures/{dayKey}/invoices ثم حذفها من sales (دفعات 250 فاتورة = 500 عملية كحد أقصى) */
+      /** نقل فواتير الشيفت الحالي إلى shiftClosures/{shiftId}/invoices ثم حذفها من sales */
       const CHUNK = 250;
       for (let i = 0; i < saleDocs.length; i += CHUNK) {
         const chunk = saleDocs.slice(i, i + CHUNK);
@@ -200,8 +174,8 @@ export default function HomeDashboardPage() {
           const data = d.data();
           const archiveRef = doc(
             firestore,
-            "dayClosures",
-            dayKey,
+            "shiftClosures",
+            shiftId,
             "invoices",
             d.id
           );
@@ -218,25 +192,32 @@ export default function HomeDashboardPage() {
         await batch.commit();
       }
 
-      await setDoc(closeRef, {
+      await setDoc(shiftRef, {
+        shiftId,
+        shiftNumber,
         dayKey,
+        shiftLabel: `${dayKey}-S${shiftNumber}`,
         totalRevenue,
         totalCost,
         totalProfit: totalRevenue - totalCost,
         invoicesCount,
         salesArchived: true,
         closedAt: now,
-        closedBy: user?.uid || "",
-        closedByName: profile?.displayName || "",
+        closedDate: nowDate.toLocaleDateString("ar-EG-u-nu-latn"),
+        closedTime: nowDate.toLocaleTimeString("ar-EG-u-nu-latn", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        closedByUid: user?.uid || "",
+        closedByName: profile?.displayName || user?.email || "",
       });
 
-      setDayClosed(true);
       setTodayInvoices([]);
       setTodayInvoicesCount(0);
       setTodaySales(0);
       setTodayProfit(0);
     } catch (e) {
-      console.error("خطأ في تقفيل اليوم", e);
+      console.error("خطأ في تقفيل الشيفت", e);
     } finally {
       setClosing(false);
     }
@@ -249,25 +230,25 @@ export default function HomeDashboardPage() {
           <div className={styles.cardIcon} style={{ background: "#dbeafe" }}>
             <FaDollarSign style={{ color: "#3b82f6" }} />
           </div>
-          <div className={styles.cardTitle}>مبيعات اليوم</div>
+          <div className={styles.cardTitle}>مبيعات الشيفت الحالي</div>
           <div className={styles.cardValue}>{formatCurrency(todaySales)}</div>
-          <div className={styles.cardHint}>إجمالي قيمة فواتير نقطة البيع اليوم</div>
+          <div className={styles.cardHint}>إجمالي قيمة فواتير الشيفت المفتوح</div>
         </div>
         {isOwner ? (
           <div className={styles.card}>
             <div className={styles.cardIcon} style={{ background: "#dcfce7" }}>
               <FaChartLine style={{ color: "#10b981" }} />
             </div>
-            <div className={styles.cardTitle}>ربح اليوم</div>
+            <div className={styles.cardTitle}>ربح الشيفت الحالي</div>
             <div className={styles.cardValue}>{formatCurrency(todayProfit)}</div>
-            <div className={styles.cardHint}>الإيراد - تكلفة البضاعة المباعة اليوم</div>
+            <div className={styles.cardHint}>الإيراد - تكلفة البضاعة المباعة بالشيفت الحالي</div>
           </div>
         ) : null}
         <div className={styles.card}>
           <div className={styles.cardIcon} style={{ background: "#e0e7ff" }}>
             <FaChartLine style={{ color: "#6366f1" }} />
           </div>
-          <div className={styles.cardTitle}>فواتير اليوم</div>
+          <div className={styles.cardTitle}>فواتير الشيفت الحالي</div>
           <div className={styles.cardValue}>{todayInvoicesCount}</div>
           <div className={styles.cardHint}>عدد عمليات البيع من نقطة البيع</div>
         </div>
@@ -320,25 +301,25 @@ export default function HomeDashboardPage() {
 
       <section className={`${styles.panel} ${styles.closeDayPanel}`}>
         <div className={styles.panelHeaderRow}>
-          <h2 className={styles.panelTitle}>تقفيل اليوم</h2>
+          <h2 className={styles.panelTitle}>تقفيل الشيفت</h2>
           <button
             type="button"
-            className={`${styles.closeDayButton} ${dayClosed ? styles.closeDayButtonDisabled : ""}`}
+            className={styles.closeDayButton}
             onClick={() => setShowCloseConfirm(true)}
-            disabled={dayClosed || closing}
-            title={dayClosed ? "تم تقفيل اليوم بالفعل" : "تقفيل اليوم"}
+            disabled={closing || todayInvoicesCount === 0}
+            title={todayInvoicesCount === 0 ? "لا توجد فواتير لتقفيل الشيفت" : "تقفيل الشيفت"}
           >
             {closing ? <FaSpinner className={styles.spinner} /> : <FaLock />}
-            <span>{dayClosed ? "تم تقفيل اليوم" : "تقفيل اليوم"}</span>
+            <span>تقفيل الشيفت</span>
           </button>
         </div>
         <p className={styles.muted}>
-          يتم تسجيل ملخص اليوم من فواتير نقطة البيع (مجموعة sales). اضغط على
-          فاتورة لعرض المنتجات.
+          يتم تسجيل ملخص الشيفت الحالي من فواتير نقطة البيع (مجموعة sales) مع
+          وقت التقفيل واسم المستخدم، ثم يبدأ شيفت جديد تلقائيًا.
         </p>
-        <h3 className={styles.subsectionTitle}>فواتير اليوم</h3>
+        <h3 className={styles.subsectionTitle}>فواتير الشيفت الحالي</h3>
         {(todayInvoices ?? []).length === 0 ? (
-          <p className={styles.invoiceEmpty}>لا توجد فواتير مسجّلة اليوم بعد.</p>
+          <p className={styles.invoiceEmpty}>لا توجد فواتير مسجّلة في الشيفت الحالي بعد.</p>
         ) : (
           <ul className={styles.invoiceList}>
             {(todayInvoices ?? []).map((inv) => (
@@ -472,7 +453,7 @@ export default function HomeDashboardPage() {
         >
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>تأكيد تقفيل اليوم</h3>
+              <h3 className={styles.modalTitle}>تأكيد تقفيل الشيفت</h3>
               <button
                 className={styles.modalClose}
                 onClick={() => !closing && setShowCloseConfirm(false)}
@@ -483,9 +464,9 @@ export default function HomeDashboardPage() {
             </div>
             <div className={styles.modalBody}>
               <p className={styles.modalText}>
-                هل أنت متأكد أنك تريد تقفيل اليوم؟
+                هل أنت متأكد أنك تريد تقفيل الشيفت الحالي؟
                 <br />
-                بعد التقفيل لن تتمكن من تنفيذ مبيعات جديدة اليوم.
+                سيتم أرشفة فواتير الشيفت الحالي، ويمكنك البيع فورًا في شيفت جديد.
               </p>
             </div>
             <div className={styles.modalFooter}>
@@ -500,7 +481,7 @@ export default function HomeDashboardPage() {
                 className={styles.modalButtonDanger}
                 onClick={async () => {
                   if (closing) return;
-                  await handleCloseDay();
+                  await handleCloseShift();
                   setShowCloseConfirm(false);
                 }}
                 disabled={closing}

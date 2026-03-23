@@ -8,7 +8,6 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
   query,
   runTransaction,
   where,
@@ -24,9 +23,6 @@ export default function POSPage() {
 
   const [barcodeInput, setBarcodeInput] = useState("");
   const [cartItems, setCartItems] = useState([]);
-  const [printReceipt, setPrintReceipt] = useState(null);
-  const [printImageSrc, setPrintImageSrc] = useState("");
-  const [printing, setPrinting] = useState(false);
 
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -51,21 +47,6 @@ export default function POSPage() {
     const onResize = () => setIsMobile(window.innerWidth <= 600);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  useEffect(() => {
-    // بعد انتهاء الطباعة: نخفي الـ receipt حتى ما يفضل ظاهر.
-    const afterPrint = () => {
-      setPrinting(false);
-      setPrintReceipt(null);
-      setPrintImageSrc("");
-    };
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("afterprint", afterPrint);
-      return () => window.removeEventListener("afterprint", afterPrint);
-    }
-    return undefined;
   }, []);
 
   useEffect(() => {
@@ -203,137 +184,99 @@ export default function POSPage() {
       maximumFractionDigits: 0,
     }).format(value || 0);
 
-  const buildReceiptImage = async (receipt) => {
-    if (typeof window === "undefined") return "";
-    const width = 576; // 80mm @ 203dpi تقريباً
-    const marginX = 24;
-    const tableHeaderH = 36;
-    const rowH = 34;
-    const titleBlockH = 140;
-    const footerBlockH = 90;
-    const totalHeight =
-      titleBlockH + tableHeaderH + receipt.items.length * rowH + footerBlockH;
+  const escapeHtml = (v) =>
+    String(v ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
 
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = Math.max(360, totalHeight);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return "";
+  const printReceiptInWindow = (receipt) => {
+    if (typeof window === "undefined") return;
+    const rows = (receipt.items || [])
+      .map(
+        (it) => `
+          <tr>
+            <td>${escapeHtml(it.nameAr)}</td>
+            <td>${escapeHtml(it.quantity)}</td>
+            <td>${escapeHtml(formatCurrency(it.total))}</td>
+          </tr>
+        `
+      )
+      .join("");
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#111827";
-    ctx.textBaseline = "middle";
+    const invoiceDate = new Date(receipt.createdAt).toLocaleString(locale, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-    // Logo (optional)
-    try {
-      const logoImg = await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = "/images/logo.png";
-      });
-      const logoW = 78;
-      const logoH = 52;
-      ctx.drawImage(logoImg, (width - logoW) / 2, 10, logoW, logoH);
-    } catch (e) {
-      // ignore missing logo
+    const html = `<!doctype html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <title>فاتورة ${escapeHtml(receipt.invoiceNumber)}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    html, body { margin: 0; padding: 0; background: #fff; font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
+    .receipt { width: 80mm; box-sizing: border-box; padding: 10px 7px; color: #111827; }
+    .logo-wrap { text-align: center; margin-bottom: 6px; }
+    .logo { width: 68px; height: auto; display: block; margin: 0 auto 3px; }
+    .brand { font-weight: 900; font-size: 14px; letter-spacing: .3px; }
+    .title { text-align: center; font-size: 13px; font-weight: 800; margin: 4px 0 8px; }
+    .meta { font-size: 11px; line-height: 1.6; margin-bottom: 8px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 8px; }
+    .divider { border-top: 1px dashed #9ca3af; margin: 7px 0; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
+    th, td { border: 1px solid #d1d5db; padding: 5px 4px; text-align: center; }
+    th:first-child, td:first-child { text-align: right; width: 58%; }
+    th:nth-child(2), td:nth-child(2) { width: 14%; }
+    th:last-child, td:last-child { text-align: left; width: 28%; }
+    th { background: #f3f4f6; font-weight: 800; }
+    .total { margin-top: 8px; display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; }
+    .thanks { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 800; }
+    @media print { .receipt { margin: 0 auto; } }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="logo-wrap">
+      <img src="/images/logo.png" alt="logo" class="logo" onerror="this.style.display='none'" />
+      <div class="brand">NMART</div>
+    </div>
+    <div class="title">فاتورة بيع</div>
+    <div class="meta">
+      <div class="meta-row"><span>رقم الفاتورة</span><strong>${escapeHtml(receipt.invoiceNumber)}</strong></div>
+      <div class="meta-row"><span>التاريخ</span><strong>${escapeHtml(invoiceDate)}</strong></div>
+    </div>
+    <div class="divider"></div>
+    <table>
+      <thead>
+        <tr><th>الصنف</th><th>الكمية</th><th>الإجمالي</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="divider"></div>
+    <div class="total"><span>الإجمالي:</span><span>${escapeHtml(formatCurrency(receipt.totalAmount))}</span></div>
+    <div class="thanks">شكراً لتعاملكم معنا</div>
+  </div>
+  <script>
+    setTimeout(() => { window.focus(); window.print(); }, 60);
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank", "width=420,height=720");
+    if (!w) {
+      showNotification("اسمح بفتح نافذة الطباعة (Popup) من المتصفح", "warning");
+      return;
     }
-
-    ctx.font = "700 30px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("NMART", width / 2, 80);
-
-    ctx.font = "700 22px Arial";
-    ctx.fillText("فاتورة بيع", width / 2, 112);
-
-    ctx.font = "600 18px Arial";
-    ctx.textAlign = "right";
-    ctx.fillText(`رقم الفاتورة: ${receipt.invoiceNumber}`, width - marginX, 142);
-    ctx.fillText(
-      `التاريخ: ${new Date(receipt.createdAt).toLocaleString(locale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`,
-      width - marginX,
-      166
-    );
-
-    let y = 186;
-    ctx.strokeStyle = "#111827";
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(marginX, y);
-    ctx.lineTo(width - marginX, y);
-    ctx.stroke();
-
-    // Table
-    y += 10;
-    const tableX = marginX;
-    const tableW = width - marginX * 2;
-    const colNameW = Math.floor(tableW * 0.56);
-    const colQtyW = Math.floor(tableW * 0.14);
-    const colTotalW = tableW - colNameW - colQtyW;
-
-    ctx.strokeStyle = "#9ca3af";
-    ctx.strokeRect(tableX, y, tableW, tableHeaderH);
-    ctx.beginPath();
-    ctx.moveTo(tableX + colNameW, y);
-    ctx.lineTo(tableX + colNameW, y + tableHeaderH);
-    ctx.moveTo(tableX + colNameW + colQtyW, y);
-    ctx.lineTo(tableX + colNameW + colQtyW, y + tableHeaderH);
-    ctx.stroke();
-
-    ctx.font = "700 17px Arial";
-    ctx.textAlign = "right";
-    ctx.fillText("الصنف", tableX + colNameW - 8, y + tableHeaderH / 2);
-    ctx.textAlign = "center";
-    ctx.fillText("الكمية", tableX + colNameW + colQtyW / 2, y + tableHeaderH / 2);
-    ctx.textAlign = "left";
-    ctx.fillText("الإجمالي", tableX + colNameW + colQtyW + 8, y + tableHeaderH / 2);
-
-    y += tableHeaderH;
-    ctx.font = "600 16px Arial";
-    for (const it of receipt.items) {
-      ctx.strokeRect(tableX, y, tableW, rowH);
-      ctx.beginPath();
-      ctx.moveTo(tableX + colNameW, y);
-      ctx.lineTo(tableX + colNameW, y + rowH);
-      ctx.moveTo(tableX + colNameW + colQtyW, y);
-      ctx.lineTo(tableX + colNameW + colQtyW, y + rowH);
-      ctx.stroke();
-
-      ctx.textAlign = "right";
-      ctx.fillText(String(it.nameAr || ""), tableX + colNameW - 8, y + rowH / 2);
-      ctx.textAlign = "center";
-      ctx.fillText(String(it.quantity || 0), tableX + colNameW + colQtyW / 2, y + rowH / 2);
-      ctx.textAlign = "left";
-      ctx.fillText(formatCurrency(it.total || 0), tableX + colNameW + colQtyW + 8, y + rowH / 2);
-      y += rowH;
-    }
-
-    y += 16;
-    ctx.beginPath();
-    ctx.moveTo(marginX, y);
-    ctx.lineTo(width - marginX, y);
-    ctx.stroke();
-
-    y += 24;
-    ctx.font = "700 20px Arial";
-    ctx.textAlign = "right";
-    ctx.fillText("الإجمالي:", width - marginX, y);
-    ctx.textAlign = "left";
-    ctx.fillText(formatCurrency(receipt.totalAmount || 0), marginX, y);
-
-    y += 34;
-    ctx.textAlign = "center";
-    ctx.font = "700 18px Arial";
-    ctx.fillText("شكراً لتعاملكم معنا", width / 2, y);
-
-    return canvas.toDataURL("image/png");
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   };
 
   const cartTotal = useMemo(
@@ -613,24 +556,6 @@ export default function POSPage() {
 
     try {
       setSubmitting(true);
-      const today = new Date();
-      const startOfDay = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
-      const dayKey = startOfDay.toISOString().slice(0, 10);
-      try {
-        const closeRef = doc(firestore, "dayClosures", dayKey);
-        const closeSnap = await getDoc(closeRef);
-        if (closeSnap.exists()) {
-          showNotification("تم تقفيل اليوم، لا يمكن تنفيذ مبيعات جديدة", "warning");
-          return;
-        }
-      } catch (e) {
-        // ignore
-      }
-
       const invoiceNumber = generateSaleInvoiceNumber();
       const createdAt = new Date().toISOString();
       const productLines = cartItems.filter((it) => it.kind === "product");
@@ -730,18 +655,13 @@ export default function POSPage() {
       });
 
       showNotification("تم إتمام عملية البيع بنجاح", "success");
-      // اطبع الفاتورة كصورة لتحسين دعم العربي مع الطابعات الحرارية.
       const receiptPayload = {
         invoiceNumber,
         createdAt,
         totalAmount: totalAmountForReceipt,
         items: itemsForReceipt,
       };
-      setPrintReceipt(receiptPayload);
-      const receiptImage = await buildReceiptImage(receiptPayload);
-      setPrintImageSrc(receiptImage);
-      setPrinting(true);
-      setTimeout(() => window.print(), 100);
+      printReceiptInWindow(receiptPayload);
       setCartItems([]);
       setBarcodeInput("");
       setTimeout(() => barcodeRef.current?.focus(), 50);
@@ -1072,23 +992,6 @@ export default function POSPage() {
       </div>
       </div>
 
-      {printReceipt ? (
-        <div className={styles.printReceiptRoot}>
-          <div className={styles.receiptPaper}>
-            {printImageSrc ? (
-              <img
-                src={printImageSrc}
-                alt={`receipt-${printReceipt.invoiceNumber}`}
-                className={styles.receiptPrintImage}
-              />
-            ) : (
-              <div className={styles.receiptFallbackText}>جارٍ تجهيز الفاتورة...</div>
-            )}
-
-            {printing ? <div className={styles.printingHint} /> : null}
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }

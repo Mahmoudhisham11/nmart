@@ -17,8 +17,8 @@ export default function DayClosuresPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [selectedDayKey, setSelectedDayKey] = useState(null);
-  const [dayInvoices, setDayInvoices] = useState([]);
+  const [selectedShiftId, setSelectedShiftId] = useState(null);
+  const [shiftInvoices, setShiftInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null);
 
@@ -26,14 +26,18 @@ export default function DayClosuresPage() {
     setLoading(true);
     setError("");
     try {
-      const snap = await getDocs(collection(firestore, "dayClosures"));
+      const snap = await getDocs(collection(firestore, "shiftClosures"));
       const list = [];
       snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
-      list.sort((a, b) => String(b.dayKey || b.id).localeCompare(String(a.dayKey || a.id)));
+      list.sort((a, b) =>
+        String(b.closedAt || b.dayKey || b.id).localeCompare(
+          String(a.closedAt || a.dayKey || a.id)
+        )
+      );
       setClosures(list);
     } catch (e) {
       console.error(e);
-      setError("تعذر تحميل تقفيلات الأيام.");
+      setError("تعذر تحميل تقفيلات الشيفت.");
     } finally {
       setLoading(false);
     }
@@ -54,31 +58,31 @@ export default function DayClosuresPage() {
     if (loading) return;
     const list = filteredClosures;
     if (list.length === 0) {
-      setSelectedDayKey(null);
+      setSelectedShiftId(null);
       return;
     }
     const stillValid =
-      selectedDayKey &&
-      list.some((c) => (c.dayKey || c.id) === selectedDayKey);
+      selectedShiftId &&
+      list.some((c) => (c.shiftId || c.id) === selectedShiftId);
     if (!stillValid) {
-      setSelectedDayKey(list[0].dayKey || list[0].id);
+      setSelectedShiftId(list[0].shiftId || list[0].id);
     }
-  }, [loading, filteredClosures, selectedDayKey]);
+  }, [loading, filteredClosures, selectedShiftId]);
 
   const selectedClosure = useMemo(
-    () => closures.find((c) => (c.dayKey || c.id) === selectedDayKey) || null,
-    [closures, selectedDayKey]
+    () => closures.find((c) => (c.shiftId || c.id) === selectedShiftId) || null,
+    [closures, selectedShiftId]
   );
 
-  const loadDayInvoices = useCallback(async (dayKey) => {
-    if (!dayKey) return;
+  const loadShiftInvoices = useCallback(async (shiftId) => {
+    if (!shiftId) return;
     setLoadingInvoices(true);
-    setDayInvoices([]);
+    setShiftInvoices([]);
     try {
       const invCol = collection(
         firestore,
-        "dayClosures",
-        dayKey,
+        "shiftClosures",
+        shiftId,
         "invoices"
       );
       const snap = await getDocs(invCol);
@@ -93,18 +97,18 @@ export default function DayClosuresPage() {
       rows.sort((a, b) =>
         String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
       );
-      setDayInvoices(rows);
+      setShiftInvoices(rows);
     } catch (e) {
       console.error(e);
-      setDayInvoices([]);
+      setShiftInvoices([]);
     } finally {
       setLoadingInvoices(false);
     }
   }, []);
 
   useEffect(() => {
-    if (selectedDayKey) loadDayInvoices(selectedDayKey);
-  }, [selectedDayKey, loadDayInvoices]);
+    if (selectedShiftId) loadShiftInvoices(selectedShiftId);
+  }, [selectedShiftId, loadShiftInvoices]);
 
   const formatCurrency = (value) =>
     new Intl.NumberFormat("ar-EG", {
@@ -128,10 +132,10 @@ export default function DayClosuresPage() {
   return (
     <div className={styles.wrapper}>
       <section className={styles.card}>
-        <h2 className={styles.title}>تقفيلات الأيام</h2>
+        <h2 className={styles.title}>تقفيلات الشيفت</h2>
         <p className={styles.muted}>
-          اختر يومًا لعرض الفواتير المؤرشفة بعد التقفيل. الفواتير تُنقل من
-          مجموعة المبيعات الحالية إلى أرشيف كل يوم عند التقفيل.
+          اختر شيفتًا لعرض الفواتير المؤرشفة بعد التقفيل. الفواتير تُنقل من
+          مجموعة المبيعات الحالية إلى أرشيف كل شيفت عند التقفيل.
         </p>
 
         <div className={styles.filterRow}>
@@ -153,7 +157,7 @@ export default function DayClosuresPage() {
                 className={styles.clearDateBtn}
                 onClick={() => setDateFilter("")}
               >
-                عرض كل الأيام
+                عرض كل الشيفتات
               </button>
             ) : null}
           </div>
@@ -171,7 +175,7 @@ export default function DayClosuresPage() {
         ) : null}
 
         {!loading && closures.length > 0 && filteredClosures.length === 0 ? (
-          <p className={styles.muted}>لا توجد تقفيلة للتاريخ المحدد.</p>
+          <p className={styles.muted}>لا توجد تقفيلة شيفت للتاريخ المحدد.</p>
         ) : null}
 
         {!loading && filteredClosures.length > 0 ? (
@@ -179,16 +183,18 @@ export default function DayClosuresPage() {
             <div className={styles.listPane}>
               <ul className={styles.dayList}>
                 {filteredClosures.map((c) => {
-                  const key = c.dayKey || c.id;
-                  const active = selectedDayKey === key;
+                  const key = c.shiftId || c.id;
+                  const active = selectedShiftId === key;
                   return (
                     <li key={key}>
                       <button
                         type="button"
                         className={`${styles.dayBtn} ${active ? styles.dayBtnActive : ""}`}
-                        onClick={() => setSelectedDayKey(key)}
+                        onClick={() => setSelectedShiftId(key)}
                       >
-                        <span className={styles.dayKey}>{key}</span>
+                        <span className={styles.dayKey}>
+                          {c.shiftLabel || `شيفت ${c.shiftNumber ?? "—"}`}
+                        </span>
                         <span className={styles.dayMeta}>
                           {formatCurrency(c.totalRevenue)} · {c.invoicesCount ?? 0}{" "}
                           فاتورة
@@ -201,12 +207,14 @@ export default function DayClosuresPage() {
             </div>
 
             <div className={styles.detailPane}>
-              {!selectedDayKey ? (
-                <p className={styles.muted}>اختر يومًا من القائمة.</p>
+              {!selectedShiftId ? (
+                <p className={styles.muted}>اختر شيفتًا من القائمة.</p>
               ) : selectedClosure ? (
                 <>
                   <div className={styles.detailHeader}>
-                    <h3 className={styles.detailTitle}>يوم {selectedClosure.dayKey || selectedClosure.id}</h3>
+                    <h3 className={styles.detailTitle}>
+                      {selectedClosure.shiftLabel || `شيفت ${selectedClosure.shiftNumber ?? "—"}`}
+                    </h3>
                     <div className={styles.summaryGrid}>
                       <div className={styles.summaryChip}>
                         إجمالي المبيعات:{" "}
@@ -224,7 +232,7 @@ export default function DayClosuresPage() {
                       </div>
                       <div className={styles.summaryChip}>
                         عدد الفواتير:{" "}
-                        <strong>{selectedClosure.invoicesCount ?? dayInvoices.length}</strong>
+                        <strong>{selectedClosure.invoicesCount ?? shiftInvoices.length}</strong>
                       </div>
                       <div className={styles.summaryChip}>
                         أُقفل في:{" "}
@@ -235,19 +243,19 @@ export default function DayClosuresPage() {
                     </div>
                   </div>
 
-                  <h4 className={styles.subTitle}>فواتير اليوم (أرشيف)</h4>
+                  <h4 className={styles.subTitle}>فواتير الشيفت (أرشيف)</h4>
                   {loadingInvoices ? (
                     <p className={styles.muted}>
                       <FaSpinner className={styles.spinner} /> جارٍ تحميل الفواتير...
                     </p>
-                  ) : dayInvoices.length === 0 ? (
+                  ) : shiftInvoices.length === 0 ? (
                     <p className={styles.muted}>
-                      لا توجد فواتير مؤرشفة لهذا اليوم (تقفيل قديم قبل تفعيل
+                      لا توجد فواتير مؤرشفة لهذا الشيفت (تقفيل قديم قبل تفعيل
                       الأرشيف، أو لم تُسجّل مبيعات).
                     </p>
                   ) : (
                     <ul className={styles.invoiceList}>
-                      {dayInvoices.map((inv) => (
+                      {shiftInvoices.map((inv) => (
                         <li key={inv.id} className={styles.invoiceListItem}>
                           <button
                             type="button"
