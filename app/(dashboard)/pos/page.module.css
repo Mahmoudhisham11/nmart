@@ -5,6 +5,26 @@
   padding: 0;
 }
 
+.posMain {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.posMain .catalogSection {
+  margin-top: 0;
+  width: 100%;
+}
+
+.posMain .cartSection {
+  width: 100%;
+}
+
+.posMain :global(table) {
+  width: 100%;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -528,6 +548,187 @@
   border-color: #334155;
 }
 
+.catalogSection {
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+[data-theme="dark"] .catalogSection {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.catalogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.catalogTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+}
+
+[data-theme="dark"] .catalogTitle {
+  color: #e5e7eb;
+}
+
+/* Category bar (shared for products + drinks) */
+.categoryBarDesktop {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.categoryBtn {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.categoryBtn:hover:not(:disabled) {
+  border-color: #ea580c;
+  color: #111827;
+  transform: translateY(-1px);
+}
+
+.categoryBtnActive {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .categoryBtn {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .categoryBtn:hover:not(:disabled) {
+  border-color: #ea580c;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .categoryBtnActive {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #ffffff;
+}
+
+.categoryBarMobile {
+  display: none;
+}
+
+.categorySlide {
+  width: auto !important;
+}
+
+.catalogGrid {
+  max-height: 260px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+.catalogItem {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: right;
+  transition: all 0.2s ease;
+  min-height: 92px;
+}
+
+.catalogItem:hover:not(:disabled) {
+  border-color: #ea580c;
+  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.14);
+  transform: translateY(-1px);
+}
+
+.catalogItem:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .catalogItem {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .catalogItem:hover:not(:disabled) {
+  border-color: #ea580c;
+  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.2);
+}
+
+.catalogKind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(234, 88, 12, 0.12);
+  color: #ea580c;
+}
+
+.catalogName {
+  font-weight: 900;
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+[data-theme="dark"] .catalogName {
+  color: #e5e7eb;
+}
+
+.catalogSub {
+  font-size: 12px;
+  color: #6b7280;
+  word-break: break-word;
+}
+
+[data-theme="dark"] .catalogSub {
+  color: #94a3b8;
+}
+
+.catalogPrice {
+  font-size: 12px;
+  color: #ea580c;
+  font-weight: 900;
+}
+
+.catalogAvailable {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 800;
+}
+
 .drinksTitle {
   margin: 0 0 12px;
   font-size: 16px;
@@ -633,6 +834,228 @@
 @media (max-width: 480px) {
   .drinksGrid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 1023px) {
+  .posMain .cartSection {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .categoryBarDesktop {
+    display: none;
+  }
+
+  .categoryBarMobile {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .categoryBarMobile :global(.swiper) {
+    width: 100%;
+  }
+
+  .categoryBarMobile :global(.swiper-slide) {
+    width: auto !important;
+  }
+
+  .catalogGrid {
+    max-height: 320px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+/* Print (Thermal receipt) */
+.noPrint {
+  display: flex;
+  flex-direction: column;
+}
+
+.printReceiptRoot {
+  display: none;
+}
+
+.receiptPaper {
+  width: min(100%, 80mm);
+  min-height: 100vh;
+  padding: 16px 12px;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  direction: rtl;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Arial, sans-serif;
+  color: #111827;
+  font-size: 12px;
+  line-height: 1.35;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.receiptLogo {
+  width: 74px;
+  height: auto;
+  display: block;
+  margin: 0 auto 6px;
+}
+
+.receiptLogoWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.receiptLogoImg {
+  width: 74px;
+  height: auto;
+  display: block;
+}
+
+.receiptLogoText {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+.receiptHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.receiptTitle {
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.receiptMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.receiptMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.receiptDivider {
+  height: 1px;
+  background: #111827;
+  opacity: 0.35;
+  margin: 10px 0;
+}
+
+.receiptTableWrap {
+  width: 100%;
+}
+
+.receiptTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.receiptTable th,
+.receiptTable td {
+  border: 1px solid #d1d5db;
+  padding: 7px 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.receiptTable th {
+  background: #f3f4f6;
+  font-weight: 900;
+}
+
+.receiptTable td:first-child,
+.receiptTable th:first-child {
+  text-align: right;
+}
+
+.receiptTable td:last-child,
+.receiptTable th:last-child {
+  text-align: left;
+}
+
+.receiptFooterTotals {
+  margin-top: 10px;
+}
+
+.receiptTotalRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.35);
+  padding-top: 8px;
+}
+
+.receiptThankYou {
+  margin-top: 12px;
+  padding-top: 0;
+  text-align: center;
+  font-weight: 800;
+}
+
+.printingHint {
+  height: 6px;
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  .noPrint {
+    display: none !important;
+  }
+
+  .printReceiptRoot {
+    display: flex !important;
+    align-items: stretch;
+    justify-content: stretch;
+    width: 100%;
+    position: fixed;
+    inset: 0;
+    visibility: visible !important;
+    background: #ffffff;
+    z-index: 999999;
+    padding: 0;
+  }
+
+  .receiptPaper {
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    padding: 18px 14px;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .printReceiptRoot,
+  .printReceiptRoot * {
+    visibility: visible !important;
+  }
+
+  .printReceiptRoot,
+  .printReceiptRoot * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 

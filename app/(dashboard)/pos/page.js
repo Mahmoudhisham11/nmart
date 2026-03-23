@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
 import {
   addDoc,
   collection,
@@ -22,15 +24,46 @@ export default function POSPage() {
 
   const [barcodeInput, setBarcodeInput] = useState("");
   const [cartItems, setCartItems] = useState([]);
+  const [printReceipt, setPrintReceipt] = useState(null);
+  const [printing, setPrinting] = useState(false);
+
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [drinks, setDrinks] = useState([]);
   const [loadingDrinks, setLoadingDrinks] = useState(true);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= 600;
+  });
+
   useEffect(() => {
     const t = setTimeout(() => barcodeRef.current?.focus(), 50);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 600);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    // بعد انتهاء الطباعة: نخفي الـ receipt حتى ما يفضل ظاهر.
+    const afterPrint = () => {
+      setPrinting(false);
+      setPrintReceipt(null);
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("afterprint", afterPrint);
+      return () => window.removeEventListener("afterprint", afterPrint);
+    }
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -55,6 +88,95 @@ export default function POSPage() {
     };
     loadDrinks();
   }, []);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const snap = await getDocs(collection(firestore, "products"));
+        const list = [];
+        snap.forEach((row) => list.push({ id: row.id, ...row.data() }));
+        list.sort((a, b) =>
+          String(a.nameAr || a.name || "").localeCompare(
+            String(b.nameAr || b.name || ""),
+            "ar"
+          )
+        );
+        setProducts(list);
+      } catch (e) {
+        console.error("خطأ في تحميل المنتجات", e);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+    loadProducts();
+  }, []);
+
+  const categories = useMemo(() => {
+    const cats = new Set();
+    for (const p of products) {
+      const c = String(p.category || "").trim();
+      if (c) cats.add(c);
+    }
+    for (const d of drinks) {
+      const c = String(d.category || "").trim();
+      if (c) cats.add(c);
+    }
+    return Array.from(cats)
+      .sort((a, b) => a.localeCompare(b, "ar"))
+      .map((x) => x);
+  }, [products, drinks]);
+
+  const hasNoCategory = useMemo(() => {
+    const pNo = products.some((p) => !String(p.category || "").trim());
+    const dNo = drinks.some((d) => !String(d.category || "").trim());
+    return pNo || dNo;
+  }, [products, drinks]);
+
+  const filteredProducts = useMemo(() => {
+    const cat = String(selectedCategory || "").trim();
+    if (!cat) return products;
+    if (cat === "__no_category__") {
+      return products.filter((p) => !String(p.category || "").trim());
+    }
+    return products.filter((p) => String(p.category || "").trim() === cat);
+  }, [products, selectedCategory]);
+
+  const filteredDrinks = useMemo(() => {
+    const cat = String(selectedCategory || "").trim();
+    if (!cat) return drinks;
+    if (cat === "__no_category__") {
+      return drinks.filter((d) => !String(d.category || "").trim());
+    }
+    return drinks.filter((d) => String(d.category || "").trim() === cat);
+  }, [drinks, selectedCategory]);
+
+  const catalogEntries = useMemo(() => {
+    const productEntries = filteredProducts.map((p) => ({
+      kind: "product",
+      id: p.id,
+      title: p.nameAr || p.name || "منتج",
+      subtitle: p.barcode ? `باركود: ${p.barcode}` : "",
+      price: Number(p.sellingPrice || 0),
+      availableQuantity:
+        typeof p.quantity === "number" ? p.quantity : Number(p.quantity || 0),
+      raw: p,
+    }));
+
+    const drinkEntries = filteredDrinks.map((d) => ({
+      kind: "drink",
+      id: d.id,
+      title: d.name || "مشروب",
+      subtitle: "",
+      price: Number(d.price || 0),
+      availableQuantity: null,
+      raw: d,
+    }));
+
+    return [...productEntries, ...drinkEntries].sort((a, b) =>
+      String(a.title || "").localeCompare(String(b.title || ""), "ar")
+    );
+  }, [filteredProducts, filteredDrinks]);
 
   const showNotification = (message, type = "error") => {
     const id = Date.now();
@@ -81,24 +203,35 @@ export default function POSPage() {
     [cartItems]
   );
 
-  const findProductByBarcodeOrCode = async (value) => {
+  const findProductByBarcode = async (value) => {
     const cleaned = String(value || "").trim();
     if (!cleaned) return null;
 
     const productsRef = collection(firestore, "products");
 
-    const qBarcode = query(productsRef, where("barcode", "==", cleaned));
-    const snapBarcode = await getDocs(qBarcode);
-    if (!snapBarcode.empty) {
-      const docSnap = snapBarcode.docs[0];
+    // Firestore تطابق النوع exact (string/number). نجرب string أولاً.
+    const qBarcodeStr = query(
+      productsRef,
+      where("barcode", "==", cleaned)
+    );
+    const snapStr = await getDocs(qBarcodeStr);
+    if (!snapStr.empty) {
+      const docSnap = snapStr.docs[0];
       return { id: docSnap.id, ...docSnap.data() };
     }
 
-    const qCode = query(productsRef, where("code", "==", cleaned));
-    const snapCode = await getDocs(qCode);
-    if (!snapCode.empty) {
-      const docSnap = snapCode.docs[0];
-      return { id: docSnap.id, ...docSnap.data() };
+    // لو الباركود أرقام فقط، جرّب كرقم (توافق مع بيانات قديمة كانت تخزن number).
+    if (/^\d+$/.test(cleaned)) {
+      const barcodeNum = Number(cleaned);
+      const qBarcodeNum = query(
+        productsRef,
+        where("barcode", "==", barcodeNum)
+      );
+      const snapNum = await getDocs(qBarcodeNum);
+      if (!snapNum.empty) {
+        const docSnap = snapNum.docs[0];
+        return { id: docSnap.id, ...docSnap.data() };
+      }
     }
 
     return null;
@@ -117,9 +250,8 @@ export default function POSPage() {
       const data = d.data();
       const items = Array.isArray(data.products) ? data.products : [];
       items.forEach((p) => {
-        const code = String(p.code ?? "").trim();
         const barcode = String(p.barcode ?? "").trim();
-        if (code === cleaned || barcode === cleaned) {
+        if (barcode === cleaned) {
           foundLine = foundLine || p;
           totalPurchasedQty += Number(p.quantity || 0);
         }
@@ -137,9 +269,8 @@ export default function POSPage() {
         const items = Array.isArray(data.items) ? data.items : [];
         items.forEach((it) => {
           if (it.itemType === "drink") return;
-          const code = String(it.code ?? "").trim();
           const barcode = String(it.barcode ?? "").trim();
-          if (code === cleaned || barcode === cleaned) {
+          if (barcode === cleaned) {
             totalSoldQty += Number(it.quantity || 0);
           }
         });
@@ -151,7 +282,6 @@ export default function POSPage() {
     const netQty = Math.max(0, totalPurchasedQty - totalSoldQty);
 
     const nameAr = String(foundLine.name ?? foundLine.nameAr ?? "منتج").trim();
-    const code = String(foundLine.code ?? cleaned).trim();
     const barcode = String(foundLine.barcode ?? cleaned).trim();
     const costPrice = Number(foundLine.wholesalePrice || 0);
     const sellingPrice = Number(foundLine.sellingPrice || 0);
@@ -161,7 +291,6 @@ export default function POSPage() {
 
     const newDocRef = await addDoc(productsRef, {
       nameAr,
-      code,
       barcode,
       quantity: netQty,
       costPrice,
@@ -173,7 +302,6 @@ export default function POSPage() {
     return {
       id: newDocRef.id,
       nameAr,
-      code,
       barcode,
       quantity: netQty,
       costPrice,
@@ -263,7 +391,7 @@ export default function POSPage() {
 
     try {
       setSearching(true);
-      let product = await findProductByBarcodeOrCode(barcode);
+      let product = await findProductByBarcode(barcode);
 
       if (!product) {
         const synced = await syncProductFromPurchases(barcode);
@@ -274,7 +402,7 @@ export default function POSPage() {
       }
 
       if (!product) {
-        showNotification("لم يتم العثور على منتج بهذا الكود/الباركود", "error");
+        showNotification("لم يتم العثور على منتج بهذا الباركود", "error");
         return;
       }
 
@@ -364,6 +492,22 @@ export default function POSPage() {
       const invoiceNumber = generateSaleInvoiceNumber();
       const createdAt = new Date().toISOString();
       const productLines = cartItems.filter((it) => it.kind === "product");
+      const totalAmountForReceipt = cartItems.reduce(
+        (sum, it) => sum + (it.quantity || 0) * (it.unitPrice || 0),
+        0
+      );
+      const totalCostForReceipt = cartItems.reduce(
+        (sum, it) => sum + (it.quantity || 0) * (it.costPrice || 0),
+        0
+      );
+      const itemsForReceipt = cartItems.map((it) => ({
+        kind: it.kind,
+        nameAr: it.nameAr,
+        barcode: it.kind === "product" ? it.barcode : "",
+        quantity: it.quantity || 0,
+        unitPrice: it.unitPrice || 0,
+        total: (it.quantity || 0) * (it.unitPrice || 0),
+      }));
 
       await runTransaction(firestore, async (tx) => {
         const productSnaps = {};
@@ -444,6 +588,15 @@ export default function POSPage() {
       });
 
       showNotification("تم إتمام عملية البيع بنجاح", "success");
+      // اطبع فاتورة فور نجاح العملية (بدون فتح نافذة جديدة).
+      setPrintReceipt({
+        invoiceNumber,
+        createdAt,
+        totalAmount: totalAmountForReceipt,
+        items: itemsForReceipt,
+      });
+      setPrinting(true);
+      setTimeout(() => window.print(), 100);
       setCartItems([]);
       setBarcodeInput("");
       setTimeout(() => barcodeRef.current?.focus(), 50);
@@ -468,7 +621,8 @@ export default function POSPage() {
   };
 
   return (
-    <div className={styles.wrapper}>
+    <>
+      <div className={`${styles.wrapper} ${styles.noPrint}`}>
       <div className={styles.notificationsContainer}>
         {notifications.map((n) => (
           <div
@@ -531,41 +685,140 @@ export default function POSPage() {
         </button>
       </form>
 
-      <section className={styles.drinksSection}>
-        <h3 className={styles.drinksTitle}>المشاريب</h3>
-        {loadingDrinks ? (
-          <p className={styles.drinksHint}>جارٍ تحميل المشاريب...</p>
-        ) : drinks.length === 0 ? (
-          <p className={styles.drinksHint}>
-            لا توجد مشاريب مفعّلة. أضف مشاريب من صفحة المشاريب.
-          </p>
-        ) : (
-          <div className={styles.drinksGrid}>
-            {drinks.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                className={styles.drinkChip}
-                onClick={() => addDrinkToCart(d)}
-                disabled={submitting}
-              >
-                <span className={styles.drinkName}>{d.name || "مشروب"}</span>
-                <span className={styles.drinkPrice}>
-                  {formatCurrency(Number(d.price || 0))}
-                </span>
-              </button>
-            ))}
+      <div className={styles.posMain}>
+        <section className={styles.catalogSection}>
+          <div className={styles.catalogHeader}>
+            <h3 className={styles.catalogTitle}>المشروبات والمنتجات</h3>
           </div>
+
+        {loadingProducts || loadingDrinks ? (
+          <p className={styles.drinksHint}>جارٍ تحميل الأصناف...</p>
+        ) : catalogEntries.length === 0 ? (
+          <p className={styles.drinksHint}>لا توجد منتجات أو مشروبات مفعّلة حالياً.</p>
+        ) : (
+          <>
+            <div className={styles.categoryBarDesktop} role="tablist" aria-label="أقسام الأصناف">
+              <button
+                type="button"
+                className={`${styles.categoryBtn} ${!selectedCategory ? styles.categoryBtnActive : ""}`}
+                onClick={() => setSelectedCategory("")}
+              >
+                الكل
+              </button>
+
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`${styles.categoryBtn} ${selectedCategory === cat ? styles.categoryBtnActive : ""}`}
+                  onClick={() => setSelectedCategory(cat)}
+                  role="tab"
+                  aria-selected={selectedCategory === cat}
+                >
+                  {cat}
+                </button>
+              ))}
+
+              {hasNoCategory ? (
+                <button
+                  type="button"
+                  className={`${styles.categoryBtn} ${selectedCategory === "__no_category__" ? styles.categoryBtnActive : ""}`}
+                  onClick={() => setSelectedCategory("__no_category__")}
+                >
+                  بدون قسم
+                </button>
+              ) : null}
+            </div>
+
+            {isMobile ? (
+              <Swiper
+                className={styles.categoryBarMobile}
+                slidesPerView="auto"
+                spaceBetween={10}
+                freeMode={true}
+                watchOverflow={true}
+              >
+                <SwiperSlide className={styles.categorySlide}>
+                  <button
+                    type="button"
+                    className={`${styles.categoryBtn} ${!selectedCategory ? styles.categoryBtnActive : ""}`}
+                    onClick={() => setSelectedCategory("")}
+                  >
+                    الكل
+                  </button>
+                </SwiperSlide>
+
+                {categories.map((cat) => (
+                  <SwiperSlide key={cat} className={styles.categorySlide}>
+                    <button
+                      type="button"
+                      className={`${styles.categoryBtn} ${selectedCategory === cat ? styles.categoryBtnActive : ""}`}
+                      onClick={() => setSelectedCategory(cat)}
+                      role="tab"
+                      aria-selected={selectedCategory === cat}
+                    >
+                      {cat}
+                    </button>
+                  </SwiperSlide>
+                ))}
+
+                {hasNoCategory ? (
+                  <SwiperSlide className={styles.categorySlide}>
+                    <button
+                      type="button"
+                      className={`${styles.categoryBtn} ${selectedCategory === "__no_category__" ? styles.categoryBtnActive : ""}`}
+                      onClick={() => setSelectedCategory("__no_category__")}
+                    >
+                      بدون قسم
+                    </button>
+                  </SwiperSlide>
+                ) : null}
+              </Swiper>
+            ) : null}
+
+            <div className={styles.catalogGrid}>
+              {catalogEntries.map((it) => {
+                const disabled =
+                  submitting || (it.kind === "product" && (it.availableQuantity ?? 0) < 1);
+                return (
+                  <button
+                    key={`${it.kind}:${it.id}`}
+                    type="button"
+                    className={styles.catalogItem}
+                    onClick={() => {
+                      // UX: يمكنك إضافة المنتج/المشروب مباشرة من القائمة بدون باركود.
+                      if (it.kind === "product") addProductToCart(it.raw);
+                      else addDrinkToCart(it.raw);
+                    }}
+                    disabled={disabled}
+                  >
+                    <span className={styles.catalogKind}>
+                      {it.kind === "product" ? "منتج" : "مشروب"}
+                    </span>
+                    <span className={styles.catalogName}>{it.title}</span>
+                    {it.subtitle ? <span className={styles.catalogSub}>{it.subtitle}</span> : null}
+                    <span className={styles.catalogPrice}>{formatCurrency(it.price)}</span>
+                    {it.kind === "product" ? (
+                      <span className={styles.catalogAvailable}>المتاح: {it.availableQuantity ?? 0}</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </section>
 
-      {cartItems.length === 0 ? (
-        <div className={styles.emptyState}>
-          <p>السلة فارغة. أضف منتجًا بالباركود أو اختر مشروبًا من القائمة.</p>
-        </div>
-      ) : (
-        <div className={styles.cartSection}>
-          <div className={styles.cartTable}>
+        {cartItems.length === 0 ? (
+          <div className={styles.emptyState}>
+            <p>
+              السلة فارغة. اختر منتج أو مشروب من الأقسام أو استخدم
+              الباركود.
+            </p>
+          </div>
+        ) : (
+          <div className={styles.cartSection}>
+            <div className={styles.cartTable}>
             <table>
               <thead>
                 <tr>
@@ -668,9 +921,95 @@ export default function POSPage() {
                 "إتمام البيع"
               )}
             </button>
+            </div>
+          </div>
+        )}
+      </div>
+      </div>
+
+      {printReceipt ? (
+        <div className={styles.printReceiptRoot}>
+          <div className={styles.receiptPaper}>
+            <div className={styles.receiptLogoWrap}>
+              <img
+                src="/images/logo.png"
+                alt="logo"
+                className={styles.receiptLogoImg}
+                onError={(e) => {
+                  // لو ملف اللوجو غير موجود، نظهر بديل نصي عشان الطباعة ما تبقاش فاضية.
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+              <div className={styles.receiptLogoText}>NMART</div>
+            </div>
+
+            <div className={styles.receiptHeader}>
+              <div className={styles.receiptTitle}>فاتورة بيع</div>
+              <div className={styles.receiptMeta}>
+                <div className={styles.receiptMetaRow}>
+                  <span>رقم الفاتورة</span>
+                  <strong>{printReceipt.invoiceNumber}</strong>
+                </div>
+                <div className={styles.receiptMetaRow}>
+                  التاريخ:{" "}
+                  <strong>
+                    {new Date(printReceipt.createdAt).toLocaleString("ar-EG", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.receiptDivider} />
+
+            <div className={styles.receiptTableWrap}>
+              <table className={styles.receiptTable}>
+                <colgroup>
+                  <col style={{ width: "60%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "25%" }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>الصنف</th>
+                    <th>الكمية</th>
+                    <th>الإجمالي</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {printReceipt.items.map((it, idx) => (
+                    <tr key={`${it.kind}:${idx}`}>
+                      <td>{it.nameAr}</td>
+                      <td>{it.quantity}</td>
+                      <td>{formatCurrency(it.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.receiptDivider} />
+
+            <div className={styles.receiptFooterTotals}>
+              <div className={styles.receiptTotalRow}>
+                <span>الإجمالي:</span>
+                <strong>{formatCurrency(printReceipt.totalAmount)}</strong>
+              </div>
+            </div>
+
+            <div className={styles.receiptThankYou}>
+              شكراً لتعاملكم
+            </div>
+
+            {printing ? <div className={styles.printingHint} /> : null}
           </div>
         </div>
-      )}
-    </div>
+      ) : null}
+    </>
   );
 }

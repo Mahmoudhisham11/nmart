@@ -53,6 +53,40 @@
   color: #94a3b8;
 }
 
+.confirmText {
+  text-align: center;
+  line-height: 1.5;
+}
+
+.confirmHeader {
+  justify-content: center;
+  position: relative;
+}
+
+.confirmHeader .modalClose {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.confirmIconWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.confirmIcon {
+  color: #dc2626;
+  font-size: 34px;
+}
+
+.confirmFooter {
+  justify-content: center;
+  padding: 18px 20px 28px;
+}
+
 .tableWrap {
   overflow-x: auto;
 }
@@ -473,6 +507,64 @@
   cursor: not-allowed;
 }
 
+/* Category bar (filter buttons) */
+.categoryBarDesktop {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.categoryBarMobile {
+  display: none;
+}
+
+.categorySlide {
+  width: auto !important;
+}
+
+.categoryBtn {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.categoryBtn:hover:not(:disabled) {
+  border-color: #ea580c;
+  color: #111827;
+  transform: translateY(-1px);
+}
+
+.categoryBtnActive {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .categoryBtn {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .categoryBtn:hover:not(:disabled) {
+  border-color: #ea580c;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .categoryBtnActive {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #ffffff;
+}
+
 @media (max-width: 768px) {
   .table th:nth-child(5),
   .table td:nth-child(5),
@@ -481,6 +573,27 @@
   .table th:nth-child(7),
   .table td:nth-child(7) {
     display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .categoryBarDesktop {
+    display: none;
+  }
+
+  .categoryBarMobile {
+    display: block;
+    margin-bottom: 16px;
+    padding-bottom: 6px;
+  }
+
+  /* Avoid the default swiper width squeezing */
+  .categoryBarMobile :global(.swiper) {
+    width: 100%;
+  }
+
+  .categoryBarMobile :global(.swiper-slide) {
+    width: auto !important;
   }
 }
 
