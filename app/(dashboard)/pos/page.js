@@ -25,6 +25,7 @@ export default function POSPage() {
   const [barcodeInput, setBarcodeInput] = useState("");
   const [cartItems, setCartItems] = useState([]);
   const [printReceipt, setPrintReceipt] = useState(null);
+  const [printImageSrc, setPrintImageSrc] = useState("");
   const [printing, setPrinting] = useState(false);
 
   const [products, setProducts] = useState([]);
@@ -57,6 +58,7 @@ export default function POSPage() {
     const afterPrint = () => {
       setPrinting(false);
       setPrintReceipt(null);
+      setPrintImageSrc("");
     };
 
     if (typeof window !== "undefined") {
@@ -200,6 +202,139 @@ export default function POSPage() {
       currency: "EGP",
       maximumFractionDigits: 0,
     }).format(value || 0);
+
+  const buildReceiptImage = async (receipt) => {
+    if (typeof window === "undefined") return "";
+    const width = 576; // 80mm @ 203dpi تقريباً
+    const marginX = 24;
+    const tableHeaderH = 36;
+    const rowH = 34;
+    const titleBlockH = 140;
+    const footerBlockH = 90;
+    const totalHeight =
+      titleBlockH + tableHeaderH + receipt.items.length * rowH + footerBlockH;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = Math.max(360, totalHeight);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#111827";
+    ctx.textBaseline = "middle";
+
+    // Logo (optional)
+    try {
+      const logoImg = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = "/images/logo.png";
+      });
+      const logoW = 78;
+      const logoH = 52;
+      ctx.drawImage(logoImg, (width - logoW) / 2, 10, logoW, logoH);
+    } catch (e) {
+      // ignore missing logo
+    }
+
+    ctx.font = "700 30px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("NMART", width / 2, 80);
+
+    ctx.font = "700 22px Arial";
+    ctx.fillText("فاتورة بيع", width / 2, 112);
+
+    ctx.font = "600 18px Arial";
+    ctx.textAlign = "right";
+    ctx.fillText(`رقم الفاتورة: ${receipt.invoiceNumber}`, width - marginX, 142);
+    ctx.fillText(
+      `التاريخ: ${new Date(receipt.createdAt).toLocaleString(locale, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`,
+      width - marginX,
+      166
+    );
+
+    let y = 186;
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(marginX, y);
+    ctx.lineTo(width - marginX, y);
+    ctx.stroke();
+
+    // Table
+    y += 10;
+    const tableX = marginX;
+    const tableW = width - marginX * 2;
+    const colNameW = Math.floor(tableW * 0.56);
+    const colQtyW = Math.floor(tableW * 0.14);
+    const colTotalW = tableW - colNameW - colQtyW;
+
+    ctx.strokeStyle = "#9ca3af";
+    ctx.strokeRect(tableX, y, tableW, tableHeaderH);
+    ctx.beginPath();
+    ctx.moveTo(tableX + colNameW, y);
+    ctx.lineTo(tableX + colNameW, y + tableHeaderH);
+    ctx.moveTo(tableX + colNameW + colQtyW, y);
+    ctx.lineTo(tableX + colNameW + colQtyW, y + tableHeaderH);
+    ctx.stroke();
+
+    ctx.font = "700 17px Arial";
+    ctx.textAlign = "right";
+    ctx.fillText("الصنف", tableX + colNameW - 8, y + tableHeaderH / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("الكمية", tableX + colNameW + colQtyW / 2, y + tableHeaderH / 2);
+    ctx.textAlign = "left";
+    ctx.fillText("الإجمالي", tableX + colNameW + colQtyW + 8, y + tableHeaderH / 2);
+
+    y += tableHeaderH;
+    ctx.font = "600 16px Arial";
+    for (const it of receipt.items) {
+      ctx.strokeRect(tableX, y, tableW, rowH);
+      ctx.beginPath();
+      ctx.moveTo(tableX + colNameW, y);
+      ctx.lineTo(tableX + colNameW, y + rowH);
+      ctx.moveTo(tableX + colNameW + colQtyW, y);
+      ctx.lineTo(tableX + colNameW + colQtyW, y + rowH);
+      ctx.stroke();
+
+      ctx.textAlign = "right";
+      ctx.fillText(String(it.nameAr || ""), tableX + colNameW - 8, y + rowH / 2);
+      ctx.textAlign = "center";
+      ctx.fillText(String(it.quantity || 0), tableX + colNameW + colQtyW / 2, y + rowH / 2);
+      ctx.textAlign = "left";
+      ctx.fillText(formatCurrency(it.total || 0), tableX + colNameW + colQtyW + 8, y + rowH / 2);
+      y += rowH;
+    }
+
+    y += 16;
+    ctx.beginPath();
+    ctx.moveTo(marginX, y);
+    ctx.lineTo(width - marginX, y);
+    ctx.stroke();
+
+    y += 24;
+    ctx.font = "700 20px Arial";
+    ctx.textAlign = "right";
+    ctx.fillText("الإجمالي:", width - marginX, y);
+    ctx.textAlign = "left";
+    ctx.fillText(formatCurrency(receipt.totalAmount || 0), marginX, y);
+
+    y += 34;
+    ctx.textAlign = "center";
+    ctx.font = "700 18px Arial";
+    ctx.fillText("شكراً لتعاملكم معنا", width / 2, y);
+
+    return canvas.toDataURL("image/png");
+  };
 
   const cartTotal = useMemo(
     () =>
@@ -595,13 +730,16 @@ export default function POSPage() {
       });
 
       showNotification("تم إتمام عملية البيع بنجاح", "success");
-      // اطبع فاتورة فور نجاح العملية (بدون فتح نافذة جديدة).
-      setPrintReceipt({
+      // اطبع الفاتورة كصورة لتحسين دعم العربي مع الطابعات الحرارية.
+      const receiptPayload = {
         invoiceNumber,
         createdAt,
         totalAmount: totalAmountForReceipt,
         items: itemsForReceipt,
-      });
+      };
+      setPrintReceipt(receiptPayload);
+      const receiptImage = await buildReceiptImage(receiptPayload);
+      setPrintImageSrc(receiptImage);
       setPrinting(true);
       setTimeout(() => window.print(), 100);
       setCartItems([]);
@@ -937,81 +1075,15 @@ export default function POSPage() {
       {printReceipt ? (
         <div className={styles.printReceiptRoot}>
           <div className={styles.receiptPaper}>
-            <div className={styles.receiptLogoWrap}>
+            {printImageSrc ? (
               <img
-                src="/images/logo.png"
-                alt="logo"
-                className={styles.receiptLogoImg}
-                onError={(e) => {
-                  // لو ملف اللوجو غير موجود، نظهر بديل نصي عشان الطباعة ما تبقاش فاضية.
-                  e.currentTarget.style.display = "none";
-                }}
+                src={printImageSrc}
+                alt={`receipt-${printReceipt.invoiceNumber}`}
+                className={styles.receiptPrintImage}
               />
-              <div className={styles.receiptLogoText}>NMART</div>
-            </div>
-
-            <div className={styles.receiptHeader}>
-              <div className={styles.receiptTitle}>فاتورة بيع</div>
-              <div className={styles.receiptMeta}>
-                <div className={styles.receiptMetaRow}>
-                  <span>رقم الفاتورة</span>
-                  <strong>{printReceipt.invoiceNumber}</strong>
-                </div>
-                <div className={styles.receiptMetaRow}>
-                  التاريخ:{" "}
-                  <strong>
-                    {new Date(printReceipt.createdAt).toLocaleString(locale, {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </strong>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.receiptDivider} />
-
-            <div className={styles.receiptTableWrap}>
-              <table className={styles.receiptTable}>
-                <colgroup>
-                  <col style={{ width: "60%" }} />
-                  <col style={{ width: "15%" }} />
-                  <col style={{ width: "25%" }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>الصنف</th>
-                    <th>الكمية</th>
-                    <th>الإجمالي</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {printReceipt.items.map((it, idx) => (
-                    <tr key={`${it.kind}:${idx}`}>
-                      <td>{it.nameAr}</td>
-                      <td>{it.quantity}</td>
-                      <td>{formatCurrency(it.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className={styles.receiptDivider} />
-
-            <div className={styles.receiptFooterTotals}>
-              <div className={styles.receiptTotalRow}>
-                <span>الإجمالي:</span>
-                <strong>{formatCurrency(printReceipt.totalAmount)}</strong>
-              </div>
-            </div>
-
-            <div className={styles.receiptThankYou}>
-              شكراً لتعاملكم
-            </div>
+            ) : (
+              <div className={styles.receiptFallbackText}>جارٍ تجهيز الفاتورة...</div>
+            )}
 
             {printing ? <div className={styles.printingHint} /> : null}
           </div>

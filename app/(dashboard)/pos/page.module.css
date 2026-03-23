@@ -880,7 +880,7 @@
 .receiptPaper {
   width: 80mm;
   min-height: auto;
-  padding: 12px 8px;
+  padding: 0;
   border-radius: 0;
   border: none;
   box-shadow: none;
@@ -895,6 +895,18 @@
   flex-direction: column;
   gap: 6px;
   box-sizing: border-box;
+}
+
+.receiptPrintImage {
+  width: 100%;
+  display: block;
+}
+
+.receiptFallbackText {
+  padding: 14px 8px;
+  font-size: 13px;
+  text-align: center;
+  color: #374151;
 }
 
 .receiptLogo {
@@ -1040,7 +1052,7 @@
     max-width: 80mm;
     min-height: auto;
     height: auto;
-    padding: 10px 6px;
+    padding: 0;
     border: none;
     border-radius: 0;
     box-shadow: none;
