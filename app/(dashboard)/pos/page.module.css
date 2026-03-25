@@ -12,6 +12,34 @@
   width: 100%;
 }
 
+.posGrid {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  align-items: stretch;
+  --pos-shared-scroll-height: 420px;
+}
+
+.sidePane {
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: stretch;
+}
+
+.posGrid .catalogSection {
+  flex: 1;
+  min-width: 0;
+  height: var(--pos-shared-scroll-height);
+  display: flex;
+  flex-direction: column;
+}
+
+.posGrid .cartSection {
+  width: 100%;
+}
+
 .posMain .catalogSection {
   margin-top: 0;
   width: 100%;
@@ -570,6 +598,14 @@
   flex-wrap: wrap;
 }
 
+.catalogBody {
+  display: block;
+}
+
+.catalogRight {
+  min-width: 0;
+}
+
 .catalogTitle {
   margin: 0;
   font-size: 16px;
@@ -579,6 +615,101 @@
 
 [data-theme="dark"] .catalogTitle {
   color: #e5e7eb;
+}
+
+/* Sidebar categories (desktop) */
+.categoryPanel {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px;
+  height: var(--pos-shared-scroll-height);
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme="dark"] .categoryPanel {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.categoryPanelTitle {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #111827;
+}
+
+[data-theme="dark"] .categoryPanelTitle {
+  color: #e5e7eb;
+}
+
+.categoryCards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  padding-left: 2px;
+}
+
+.categoryCard {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 14px 12px;
+  cursor: pointer;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.18s ease;
+  min-height: 78px;
+}
+
+[data-theme="dark"] .categoryCard {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+.categoryCard:hover:not(:disabled) {
+  border-color: #ea580c;
+  box-shadow: 0 10px 18px rgba(234, 88, 12, 0.12);
+  transform: translateY(-1px);
+}
+
+.categoryCardActive {
+  background: rgba(234, 88, 12, 0.12);
+  border-color: #ea580c;
+}
+
+[data-theme="dark"] .categoryCardActive {
+  background: rgba(234, 88, 12, 0.18);
+  border-color: #ea580c;
+}
+
+.categoryCardName {
+  font-size: 14px;
+  font-weight: 900;
+  color: #111827;
+  line-height: 1.2;
+}
+
+[data-theme="dark"] .categoryCardName {
+  color: #e5e7eb;
+}
+
+.categoryCardMeta {
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .categoryCardMeta {
+  color: #94a3b8;
 }
 
 /* Category bar (shared for products + drinks) */
@@ -640,7 +771,9 @@
 }
 
 .catalogGrid {
-  max-height: 260px;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -838,8 +971,27 @@
 }
 
 @media (max-width: 1023px) {
-  .posMain .cartSection {
+  .posGrid {
+    flex-direction: column;
+    --pos-shared-scroll-height: auto;
+  }
+
+  .sidePane {
     width: 100%;
+    position: static;
+  }
+
+  .posGrid .catalogSection {
+    height: auto;
+    display: block;
+  }
+
+  .categoryPanel {
+    height: auto;
+  }
+
+  .catalogGrid {
+    max-height: 320px;
   }
 }
 

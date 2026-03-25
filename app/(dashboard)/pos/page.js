@@ -751,241 +751,266 @@ export default function POSPage() {
       </form>
 
       <div className={styles.posMain}>
-        <section className={styles.catalogSection}>
-          <div className={styles.catalogHeader}>
-            <h3 className={styles.catalogTitle}>المشروبات والمنتجات</h3>
-          </div>
-
-        {loadingProducts || loadingDrinks ? (
-          <p className={styles.drinksHint}>جارٍ تحميل الأصناف...</p>
-        ) : catalogEntries.length === 0 ? (
-          <p className={styles.drinksHint}>لا توجد منتجات أو مشروبات مفعّلة حالياً.</p>
-        ) : (
-          <>
-            <div className={styles.categoryBarDesktop} role="tablist" aria-label="أقسام الأصناف">
-              <button
-                type="button"
-                className={`${styles.categoryBtn} ${!selectedCategory ? styles.categoryBtnActive : ""}`}
-                onClick={() => setSelectedCategory("")}
-              >
-                الكل
-              </button>
-
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`${styles.categoryBtn} ${selectedCategory === cat ? styles.categoryBtnActive : ""}`}
-                  onClick={() => setSelectedCategory(cat)}
-                  role="tab"
-                  aria-selected={selectedCategory === cat}
-                >
-                  {cat}
-                </button>
-              ))}
-
-              {hasNoCategory ? (
-                <button
-                  type="button"
-                  className={`${styles.categoryBtn} ${selectedCategory === "__no_category__" ? styles.categoryBtnActive : ""}`}
-                  onClick={() => setSelectedCategory("__no_category__")}
-                >
-                  بدون قسم
-                </button>
-              ) : null}
+        <div className={styles.posGrid}>
+          <section className={styles.catalogSection}>
+            <div className={styles.catalogHeader}>
+              <h3 className={styles.catalogTitle}>المشروبات والمنتجات</h3>
             </div>
 
-            {isMobile ? (
-              <Swiper
-                className={styles.categoryBarMobile}
-                slidesPerView="auto"
-                spaceBetween={10}
-                freeMode={true}
-                watchOverflow={true}
-              >
-                <SwiperSlide className={styles.categorySlide}>
-                  <button
-                    type="button"
-                    className={`${styles.categoryBtn} ${!selectedCategory ? styles.categoryBtnActive : ""}`}
-                    onClick={() => setSelectedCategory("")}
+            {loadingProducts || loadingDrinks ? (
+              <p className={styles.drinksHint}>جارٍ تحميل الأصناف...</p>
+            ) : catalogEntries.length === 0 ? (
+              <p className={styles.drinksHint}>لا توجد منتجات أو مشروبات مفعّلة حالياً.</p>
+            ) : (
+              <>
+                {isMobile ? (
+                  <Swiper
+                    className={styles.categoryBarMobile}
+                    slidesPerView="auto"
+                    spaceBetween={10}
+                    freeMode={true}
+                    watchOverflow={true}
                   >
-                    الكل
-                  </button>
-                </SwiperSlide>
+                    <SwiperSlide className={styles.categorySlide}>
+                      <button
+                        type="button"
+                        className={`${styles.categoryBtn} ${!selectedCategory ? styles.categoryBtnActive : ""}`}
+                        onClick={() => setSelectedCategory("")}
+                      >
+                        الكل
+                      </button>
+                    </SwiperSlide>
 
-                {categories.map((cat) => (
-                  <SwiperSlide key={cat} className={styles.categorySlide}>
-                    <button
-                      type="button"
-                      className={`${styles.categoryBtn} ${selectedCategory === cat ? styles.categoryBtnActive : ""}`}
-                      onClick={() => setSelectedCategory(cat)}
-                      role="tab"
-                      aria-selected={selectedCategory === cat}
-                    >
-                      {cat}
-                    </button>
-                  </SwiperSlide>
-                ))}
+                    {categories.map((cat) => (
+                      <SwiperSlide key={cat} className={styles.categorySlide}>
+                        <button
+                          type="button"
+                          className={`${styles.categoryBtn} ${selectedCategory === cat ? styles.categoryBtnActive : ""}`}
+                          onClick={() => setSelectedCategory(cat)}
+                          role="tab"
+                          aria-selected={selectedCategory === cat}
+                        >
+                          {cat}
+                        </button>
+                      </SwiperSlide>
+                    ))}
 
-                {hasNoCategory ? (
-                  <SwiperSlide className={styles.categorySlide}>
-                    <button
-                      type="button"
-                      className={`${styles.categoryBtn} ${selectedCategory === "__no_category__" ? styles.categoryBtnActive : ""}`}
-                      onClick={() => setSelectedCategory("__no_category__")}
-                    >
-                      بدون قسم
-                    </button>
-                  </SwiperSlide>
-                ) : null}
-              </Swiper>
-            ) : null}
-
-            <div className={styles.catalogGrid}>
-              {catalogEntries.map((it) => {
-                const disabled =
-                  submitting || (it.kind === "product" && (it.availableQuantity ?? 0) < 1);
-                return (
-                  <button
-                    key={`${it.kind}:${it.id}`}
-                    type="button"
-                    className={styles.catalogItem}
-                    onClick={() => {
-                      // UX: يمكنك إضافة المنتج/المشروب مباشرة من القائمة بدون باركود.
-                      if (it.kind === "product") addProductToCart(it.raw);
-                      else addDrinkToCart(it.raw);
-                    }}
-                    disabled={disabled}
-                  >
-                    <span className={styles.catalogKind}>
-                      {it.kind === "product" ? "منتج" : "مشروب"}
-                    </span>
-                    <span className={styles.catalogName}>{it.title}</span>
-                    {it.subtitle ? <span className={styles.catalogSub}>{it.subtitle}</span> : null}
-                    <span className={styles.catalogPrice}>{formatCurrency(it.price)}</span>
-                    {it.kind === "product" ? (
-                      <span className={styles.catalogAvailable}>المتاح: {it.availableQuantity ?? 0}</span>
+                    {hasNoCategory ? (
+                      <SwiperSlide className={styles.categorySlide}>
+                        <button
+                          type="button"
+                          className={`${styles.categoryBtn} ${selectedCategory === "__no_category__" ? styles.categoryBtnActive : ""}`}
+                          onClick={() => setSelectedCategory("__no_category__")}
+                        >
+                          بدون قسم
+                        </button>
+                      </SwiperSlide>
                     ) : null}
+                  </Swiper>
+                ) : null}
+
+                <div className={styles.catalogGrid}>
+                  {catalogEntries.map((it) => {
+                    const disabled =
+                      submitting ||
+                      (it.kind === "product" && (it.availableQuantity ?? 0) < 1);
+                    return (
+                      <button
+                        key={`${it.kind}:${it.id}`}
+                        type="button"
+                        className={styles.catalogItem}
+                        onClick={() => {
+                          if (it.kind === "product") addProductToCart(it.raw);
+                          else addDrinkToCart(it.raw);
+                        }}
+                        disabled={disabled}
+                      >
+                        <span className={styles.catalogKind}>
+                          {it.kind === "product" ? "منتج" : "مشروب"}
+                        </span>
+                        <span className={styles.catalogName}>{it.title}</span>
+                        {it.subtitle ? (
+                          <span className={styles.catalogSub}>{it.subtitle}</span>
+                        ) : null}
+                        <span className={styles.catalogPrice}>{formatCurrency(it.price)}</span>
+                        {it.kind === "product" ? (
+                          <span className={styles.catalogAvailable}>
+                            المتاح: {it.availableQuantity ?? 0}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </section>
+
+          <aside className={styles.sidePane}>
+            {!isMobile ? (
+              <div className={styles.categoryPanel} aria-label="أقسام الأصناف">
+                <div className={styles.categoryPanelTitle}>الأقسام</div>
+                <div className={styles.categoryCards}>
+                  <button
+                    type="button"
+                    className={`${styles.categoryCard} ${!selectedCategory ? styles.categoryCardActive : ""}`}
+                    onClick={() => setSelectedCategory("")}
+                    aria-pressed={!selectedCategory}
+                  >
+                    <span className={styles.categoryCardName}>الكل</span>
+                    <span className={styles.categoryCardMeta}>
+                      {products.length + drinks.length} صنف
+                    </span>
                   </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </section>
+
+                  {categories.map((cat) => {
+                    const count =
+                      products.filter((p) => String(p.category || "").trim() === cat).length +
+                      drinks.filter((d) => String(d.category || "").trim() === cat).length;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        className={`${styles.categoryCard} ${selectedCategory === cat ? styles.categoryCardActive : ""}`}
+                        onClick={() => setSelectedCategory(cat)}
+                        aria-pressed={selectedCategory === cat}
+                      >
+                        <span className={styles.categoryCardName}>{cat}</span>
+                        <span className={styles.categoryCardMeta}>{count} صنف</span>
+                      </button>
+                    );
+                  })}
+
+                  {hasNoCategory ? (
+                    <button
+                      type="button"
+                      className={`${styles.categoryCard} ${selectedCategory === "__no_category__" ? styles.categoryCardActive : ""}`}
+                      onClick={() => setSelectedCategory("__no_category__")}
+                      aria-pressed={selectedCategory === "__no_category__"}
+                    >
+                      <span className={styles.categoryCardName}>بدون قسم</span>
+                      <span className={styles.categoryCardMeta}>
+                        {products.filter((p) => !String(p.category || "").trim()).length +
+                          drinks.filter((d) => !String(d.category || "").trim()).length}{" "}
+                        صنف
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </aside>
+        </div>
 
         {cartItems.length === 0 ? (
           <div className={styles.emptyState}>
-            <p>
-              السلة فارغة. اختر منتج أو مشروب من الأقسام أو استخدم
-              الباركود.
-            </p>
+            <p>السلة فارغة. اختر منتج أو مشروب من الأقسام أو استخدم الباركود.</p>
           </div>
         ) : (
           <div className={styles.cartSection}>
             <div className={styles.cartTable}>
-            <table>
-              <thead>
-                <tr>
-                  <th>الصنف</th>
-                  <th>الباركود</th>
-                  <th>الكمية</th>
-                  <th>سعر الوحدة</th>
-                  <th>الإجمالي</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {cartItems.map((it) => (
-                  <tr key={it.lineKey}>
-                    <td className={styles.nameCell}>
-                      <div className={styles.nameMain}>{it.nameAr}</div>
-                      <div className={styles.nameSub}>
-                        {it.kind === "product" ? (
-                          <>المتاح: {it.availableQuantity ?? 0}</>
-                        ) : (
-                          <>مشروب</>
-                        )}
-                      </div>
-                    </td>
-                    <td>{it.kind === "product" ? it.barcode : "—"}</td>
-                    <td>
-                      <div className={styles.qtyControls}>
-                        <button
-                          type="button"
-                          className={styles.qtyBtn}
-                          onClick={() => decQty(it.lineKey)}
-                          disabled={submitting || (it.quantity || 1) <= 1}
-                          title="تقليل"
-                        >
-                          <FaMinus />
-                        </button>
-                        <input
-                          type="number"
-                          className={styles.qtyInput}
-                          value={it.quantity}
-                          min={1}
-                          onChange={(e) =>
-                            setCartItemQuantity(it.lineKey, e.target.value)
-                          }
-                          disabled={submitting}
-                        />
-                        <button
-                          type="button"
-                          className={styles.qtyBtn}
-                          onClick={() => incQty(it.lineKey)}
-                          disabled={
-                            submitting ||
-                            (it.kind === "product" &&
-                              (it.quantity || 0) >= (it.availableQuantity ?? 0))
-                          }
-                          title="زيادة"
-                        >
-                          <FaPlus />
-                        </button>
-                      </div>
-                    </td>
-                    <td>{formatCurrency(it.unitPrice)}</td>
-                    <td className={styles.totalCell}>
-                      {formatCurrency((it.quantity || 0) * (it.unitPrice || 0))}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className={styles.removeButton}
-                        onClick={() => removeCartItem(it.lineKey)}
-                        disabled={submitting}
-                        title="حذف"
-                      >
-                        <FaTrash />
-                      </button>
-                    </td>
+              <table>
+                <thead>
+                  <tr>
+                    <th>الصنف</th>
+                    <th>الباركود</th>
+                    <th>الكمية</th>
+                    <th>سعر الوحدة</th>
+                    <th>الإجمالي</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className={styles.footerRow}>
-            <div className={styles.totalSection}>
-              <span className={styles.totalLabel}>الإجمالي:</span>
-              <span className={styles.totalValue}>{formatCurrency(cartTotal)}</span>
+                </thead>
+                <tbody>
+                  {cartItems.map((it) => (
+                    <tr key={it.lineKey}>
+                      <td className={styles.nameCell}>
+                        <div className={styles.nameMain}>{it.nameAr}</div>
+                        <div className={styles.nameSub}>
+                          {it.kind === "product" ? (
+                            <>المتاح: {it.availableQuantity ?? 0}</>
+                          ) : (
+                            <>مشروب</>
+                          )}
+                        </div>
+                      </td>
+                      <td>{it.kind === "product" ? it.barcode : "—"}</td>
+                      <td>
+                        <div className={styles.qtyControls}>
+                          <button
+                            type="button"
+                            className={styles.qtyBtn}
+                            onClick={() => decQty(it.lineKey)}
+                            disabled={submitting || (it.quantity || 1) <= 1}
+                            title="تقليل"
+                          >
+                            <FaMinus />
+                          </button>
+                          <input
+                            type="number"
+                            className={styles.qtyInput}
+                            value={it.quantity}
+                            min={1}
+                            onChange={(e) =>
+                              setCartItemQuantity(it.lineKey, e.target.value)
+                            }
+                            disabled={submitting}
+                          />
+                          <button
+                            type="button"
+                            className={styles.qtyBtn}
+                            onClick={() => incQty(it.lineKey)}
+                            disabled={
+                              submitting ||
+                              (it.kind === "product" &&
+                                (it.quantity || 0) >= (it.availableQuantity ?? 0))
+                            }
+                            title="زيادة"
+                          >
+                            <FaPlus />
+                          </button>
+                        </div>
+                      </td>
+                      <td>{formatCurrency(it.unitPrice)}</td>
+                      <td className={styles.totalCell}>
+                        {formatCurrency((it.quantity || 0) * (it.unitPrice || 0))}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className={styles.removeButton}
+                          onClick={() => removeCartItem(it.lineKey)}
+                          disabled={submitting}
+                          title="حذف"
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <button
-              type="button"
-              className={styles.submitButton}
-              onClick={handleSubmitSale}
-              disabled={submitting || cartItems.length === 0}
-            >
-              {submitting ? (
-                <>
-                  <FaSpinner className={styles.spinner} />
-                  <span>جارٍ إتمام البيع...</span>
-                </>
-              ) : (
-                "إتمام البيع"
-              )}
-            </button>
+
+            <div className={styles.footerRow}>
+              <div className={styles.totalSection}>
+                <span className={styles.totalLabel}>الإجمالي:</span>
+                <span className={styles.totalValue}>{formatCurrency(cartTotal)}</span>
+              </div>
+              <button
+                type="button"
+                className={styles.submitButton}
+                onClick={handleSubmitSale}
+                disabled={submitting || cartItems.length === 0}
+              >
+                {submitting ? (
+                  <>
+                    <FaSpinner className={styles.spinner} />
+                    <span>جارٍ إتمام البيع...</span>
+                  </>
+                ) : (
+                  "إتمام البيع"
+                )}
+              </button>
             </div>
           </div>
         )}
