@@ -1,0 +1,388 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0;
+}
+
+.intro {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .intro {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.introTitle {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+[data-theme="dark"] .introTitle {
+  color: #e5e7eb;
+}
+
+.introText {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+[data-theme="dark"] .introText {
+  color: #94a3b8;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.statCard {
+  border-radius: 16px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .statCard {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.statCard:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+[data-theme="dark"] .statCard:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.statIcon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.statTitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 16px;
+  font-weight: 500;
+  margin-top: 60px;
+}
+
+[data-theme="dark"] .statTitle {
+  color: #9ca3af;
+}
+
+.statValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+
+[data-theme="dark"] .statValue {
+  color: #e5e7eb;
+}
+
+.statHint {
+  font-size: 13px;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .statHint {
+  color: #64748b;
+}
+
+.metaLine {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .metaLine {
+  color: #94a3b8;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 14px;
+  margin: 0;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-theme="dark"] .muted {
+  color: #94a3b8;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .filterRow {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.dateLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+[data-theme="dark"] .dateLabel {
+  color: #cbd5e1;
+}
+
+.dateIcon {
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+.dateInputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.dateInput {
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+}
+
+[data-theme="dark"] .dateInput {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+.clearDateBtn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #ea580c;
+  background: transparent;
+  color: #ea580c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clearDateBtn:hover {
+  background: rgba(234, 88, 12, 0.08);
+}
+
+.shiftNote {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .shiftNote {
+  color: #94a3b8;
+}
+
+.mutedHint {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .mutedHint {
+  border-color: #475569;
+  background: #0f172a;
+  color: #94a3b8;
+}
+
+.productsPanel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .productsPanel {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.productsPanelTitle {
+  margin: 0 0 16px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #111827;
+}
+
+[data-theme="dark"] .productsPanelTitle {
+  color: #e5e7eb;
+}
+
+.categoryStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.categoryCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .categoryCard {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.categoryHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .categoryHeader {
+  background: #1e293b;
+  border-bottom-color: #334155;
+}
+
+.categoryBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 900;
+  color: #ea580c;
+}
+
+.categoryMeta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .categoryMeta {
+  color: #94a3b8;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.linesTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.linesTable th,
+.linesTable td {
+  padding: 10px 14px;
+  text-align: right;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .linesTable th,
+[data-theme="dark"] .linesTable td {
+  border-bottom-color: #334155;
+}
+
+.linesTable th {
+  font-weight: 800;
+  color: #374151;
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .linesTable th {
+  color: #e5e7eb;
+  background: #1e293b;
+}
+
+.linesTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.kindProduct,
+.kindDrink {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.kindProduct {
+  background: rgba(234, 88, 12, 0.12);
+  color: #ea580c;
+}
+
+.kindDrink {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}

@@ -815,30 +815,45 @@ export default function POSPage() {
                       submitting ||
                       (it.kind === "product" && (it.availableQuantity ?? 0) < 1);
                     return (
-                      <button
+                      <div
                         key={`${it.kind}:${it.id}`}
-                        type="button"
+                        role="button"
+                        tabIndex={disabled ? -1 : 0}
+                        aria-disabled={disabled}
                         className={styles.catalogItem}
                         onClick={() => {
+                          if (disabled) return;
                           if (it.kind === "product") addProductToCart(it.raw);
                           else addDrinkToCart(it.raw);
                         }}
-                        disabled={disabled}
+                        onKeyDown={(e) => {
+                          if (disabled) return;
+                          if (e.key !== "Enter" && e.key !== " ") return;
+                          e.preventDefault();
+                          if (it.kind === "product") addProductToCart(it.raw);
+                          else addDrinkToCart(it.raw);
+                        }}
                       >
-                        <span className={styles.catalogKind}>
-                          {it.kind === "product" ? "منتج" : "مشروب"}
-                        </span>
-                        <span className={styles.catalogName}>{it.title}</span>
-                        {it.subtitle ? (
-                          <span className={styles.catalogSub}>{it.subtitle}</span>
-                        ) : null}
-                        <span className={styles.catalogPrice}>{formatCurrency(it.price)}</span>
-                        {it.kind === "product" ? (
-                          <span className={styles.catalogAvailable}>
-                            المتاح: {it.availableQuantity ?? 0}
+                        <span className={styles.catalogItemInner}>
+                          <span className={styles.catalogKind}>
+                            {it.kind === "product" ? "منتج" : "مشروب"}
                           </span>
-                        ) : null}
-                      </button>
+                          <span className={styles.catalogName}>{it.title}</span>
+                          {it.subtitle ? (
+                            <span className={styles.catalogSub}>{it.subtitle}</span>
+                          ) : null}
+                          <span className={styles.catalogFoot}>
+                            <span className={styles.catalogPrice}>
+                              {formatCurrency(it.price)}
+                            </span>
+                            {it.kind === "product" ? (
+                              <span className={styles.catalogAvailable}>
+                                المتاح: {it.availableQuantity ?? 0}
+                              </span>
+                            ) : null}
+                          </span>
+                        </span>
+                      </div>
                     );
                   })}
                 </div>

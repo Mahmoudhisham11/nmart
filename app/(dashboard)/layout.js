@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/products", label: "المنتجات", roles: ["owner", "manager"] },
   { href: "/pos", label: "نقطة البيع", roles: ["owner", "manager", "cashier"] },
   { href: "/day-closures", label: "تقفيلات الأيام", roles: ["owner", "manager"] },
+  { href: "/reports", label: "التقارير", roles: ["owner", "manager"] },
   { href: "/settings", label: "الإعدادات", roles: ["owner", "manager", "cashier"] },
 ];
 
@@ -154,6 +155,10 @@ function DashboardShell({ children }) {
     "/day-closures": {
       title: "تقفيلات الأيام",
       description: "مراجعة تقفيلات سابقة وفواتير كل يوم بعد الأرشفة",
+    },
+    "/reports": {
+      title: "التقارير",
+      description: "إجمالي المبيعات والأرباح من جميع الشيفتات المقفّلة",
     },
   };
   const pageTitle = pageMeta[pathname]?.title || "لوحة التحكم";
