@@ -13,9 +13,17 @@ import {
   where,
 } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
+import { printHtmlDocument } from "@/lib/printHtmlDocument";
 import { useAuth } from "@/components/AuthContext";
 import { FaBarcode, FaMinus, FaPlus, FaSpinner, FaTrash } from "react-icons/fa";
 import styles from "./page.module.css";
+
+const PAYMENT_OPTIONS = [
+  { id: "cash", label: "كاش" },
+  { id: "visa", label: "فيزا" },
+  { id: "wallet", label: "محفظة" },
+  { id: "instapay", label: "انستا باي" },
+];
 
 export default function POSPage() {
   const { user } = useAuth();
@@ -31,6 +39,7 @@ export default function POSPage() {
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [selectedPaymentId, setSelectedPaymentId] = useState("cash");
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isMobile, setIsMobile] = useState(() => {
@@ -198,9 +207,9 @@ export default function POSPage() {
       .map(
         (it) => `
           <tr>
-            <td>${escapeHtml(it.nameAr)}</td>
-            <td>${escapeHtml(it.quantity)}</td>
-            <td>${escapeHtml(formatCurrency(it.total))}</td>
+            <td class="col-name">${escapeHtml(it.nameAr)}</td>
+            <td class="col-qty">${escapeHtml(it.quantity)}</td>
+            <td class="col-total">${escapeHtml(formatCurrency(it.total))}</td>
           </tr>
         `
       )
@@ -214,69 +223,183 @@ export default function POSPage() {
       minute: "2-digit",
     });
 
+    const paymentLabel = escapeHtml(
+      String(receipt.paymentMethod || "").trim() || "كاش"
+    );
+
     const html = `<!doctype html>
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="utf-8" />
   <title>فاتورة ${escapeHtml(receipt.invoiceNumber)}</title>
   <style>
-    @page { size: 80mm auto; margin: 0; }
-    html, body { margin: 0; padding: 0; background: #fff; font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
-    .receipt { width: 80mm; box-sizing: border-box; padding: 10px 7px; color: #111827; }
-    .logo-wrap { text-align: center; margin-bottom: 6px; }
-    .logo { width: 68px; height: auto; display: block; margin: 0 auto 3px; }
-    .brand { font-weight: 900; font-size: 14px; letter-spacing: .3px; }
-    .title { text-align: center; font-size: 13px; font-weight: 800; margin: 4px 0 8px; }
-    .meta { font-size: 11px; line-height: 1.6; margin-bottom: 8px; }
-    .meta-row { display: flex; justify-content: space-between; gap: 8px; }
-    .divider { border-top: 1px dashed #9ca3af; margin: 7px 0; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
-    th, td { border: 1px solid #d1d5db; padding: 5px 4px; text-align: center; }
-    th:first-child, td:first-child { text-align: right; width: 58%; }
-    th:nth-child(2), td:nth-child(2) { width: 14%; }
-    th:last-child, td:last-child { text-align: left; width: 28%; }
-    th { background: #f3f4f6; font-weight: 800; }
-    .total { margin-top: 8px; display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; }
-    .thanks { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 800; }
-    @media print { .receipt { margin: 0 auto; } }
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --accent: #ea580c;
+      --accent-dark: #c2410c;
+      --accent-soft: #fff7ed;
+      --line: #e2e8f0;
+    }
+    @page { size: 80mm auto; margin: 4mm; }
+    html, body { margin: 0; padding: 0; background: #f8fafc; font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
+    .receipt {
+      width: 80mm;
+      max-width: 100%;
+      box-sizing: border-box;
+      margin: 0 auto;
+      padding: 0;
+      color: var(--ink);
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+    }
+    .receipt-topbar {
+      height: 5px;
+      background: linear-gradient(90deg, #fb923c, var(--accent), var(--accent-dark));
+    }
+    .receipt-inner { padding: 12px 10px 14px; }
+    .logo-wrap { text-align: center; margin-bottom: 8px; }
+    .logo {
+      max-width: 92px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+    .doc-title {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin: 0 0 10px;
+    }
+    .meta {
+      font-size: 11px;
+      line-height: 1.55;
+      margin-bottom: 10px;
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 10px 10px;
+      border: 1px solid var(--line);
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      padding: 4px 0;
+      border-bottom: 1px dashed #cbd5e1;
+    }
+    .meta-row:last-child { border-bottom: none; }
+    .meta-row span:first-child { color: var(--muted); font-weight: 600; }
+    .meta-row strong { font-weight: 800; color: var(--ink); text-align: left; }
+    .meta-row--pay strong { color: var(--accent-dark); font-size: 12px; }
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--line), transparent);
+      margin: 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 10px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+    thead th {
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-weight: 800;
+      padding: 8px 5px;
+      text-align: center;
+      border-bottom: 2px solid #fed7aa;
+    }
+    tbody td {
+      padding: 7px 5px;
+      text-align: center;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    tbody tr:nth-child(even) td { background: #fafafa; }
+    tbody tr:last-child td { border-bottom: none; }
+    .col-name { text-align: right !important; width: 56%; word-break: break-word; }
+    .col-qty { width: 14%; font-weight: 700; }
+    .col-total { text-align: left !important; width: 30%; font-weight: 700; }
+    .total-box {
+      margin-top: 12px;
+      padding: 12px 12px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      border: 1px solid #fed7aa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .total-box span:first-child {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--accent-dark);
+    }
+    .total-box .amount {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--accent-dark);
+      letter-spacing: -0.02em;
+    }
+    .thanks {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      padding-top: 4px;
+    }
+    @media print {
+      html, body { background: #fff; }
+      .receipt { box-shadow: none; border-radius: 0; border: none; }
+    }
   </style>
 </head>
 <body>
   <div class="receipt">
-    <div class="logo-wrap">
-      <img src="/images/logo.png" alt="logo" class="logo" onerror="this.style.display='none'" />
-      <div class="brand">NMART</div>
+    <div class="receipt-topbar" aria-hidden="true"></div>
+    <div class="receipt-inner">
+      <div class="logo-wrap">
+        <img src="/images/logo.png" alt="" class="logo" onerror="this.style.display='none'" />
+      </div>
+      <p class="doc-title">فاتورة بيع</p>
+      <div class="meta">
+        <div class="meta-row"><span>رقم الفاتورة</span><strong>${escapeHtml(receipt.invoiceNumber)}</strong></div>
+        <div class="meta-row"><span>التاريخ والوقت</span><strong>${escapeHtml(invoiceDate)}</strong></div>
+        <div class="meta-row meta-row--pay"><span>طريقة الدفع</span><strong>${paymentLabel}</strong></div>
+      </div>
+      <div class="divider"></div>
+      <table>
+        <thead>
+          <tr><th>الصنف</th><th>الكمية</th><th>الإجمالي</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="total-box">
+        <span>الإجمالي</span>
+        <span class="amount">${escapeHtml(formatCurrency(receipt.totalAmount))}</span>
+      </div>
+      <div class="thanks">شكراً لتعاملكم معنا</div>
     </div>
-    <div class="title">فاتورة بيع</div>
-    <div class="meta">
-      <div class="meta-row"><span>رقم الفاتورة</span><strong>${escapeHtml(receipt.invoiceNumber)}</strong></div>
-      <div class="meta-row"><span>التاريخ</span><strong>${escapeHtml(invoiceDate)}</strong></div>
-    </div>
-    <div class="divider"></div>
-    <table>
-      <thead>
-        <tr><th>الصنف</th><th>الكمية</th><th>الإجمالي</th></tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="divider"></div>
-    <div class="total"><span>الإجمالي:</span><span>${escapeHtml(formatCurrency(receipt.totalAmount))}</span></div>
-    <div class="thanks">شكراً لتعاملكم معنا</div>
   </div>
-  <script>
-    setTimeout(() => { window.focus(); window.print(); }, 60);
-  </script>
 </body>
 </html>`;
 
-    const w = window.open("", "_blank", "width=420,height=720");
-    if (!w) {
-      showNotification("اسمح بفتح نافذة الطباعة (Popup) من المتصفح", "warning");
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
+    printHtmlDocument(html, { iframeTitle: "طباعة فاتورة البيع" });
   };
 
   const cartTotal = useMemo(
@@ -417,6 +540,7 @@ export default function POSPage() {
             productId: product.id,
             nameAr: product.nameAr || product.name || "منتج",
             barcode: product.barcode || "",
+            category: String(product.category || "").trim() || undefined,
             quantity: 1,
             unitPrice:
               typeof product.sellingPrice === "number" ? product.sellingPrice : 0,
@@ -456,6 +580,7 @@ export default function POSPage() {
             drinkId: drink.id,
             nameAr: drink.name || "مشروب",
             barcode: "",
+            category: String(drink.category || "").trim() || undefined,
             quantity: 1,
             unitPrice: price,
             costPrice: 0,
@@ -548,7 +673,7 @@ export default function POSPage() {
 
   const generateSaleInvoiceNumber = () => `S-${Date.now()}`;
 
-  const handleSubmitSale = async () => {
+  const completeSaleWithPayment = async (paymentMethodLabel) => {
     if (cartItems.length === 0) {
       showNotification("السلة فارغة", "warning");
       return;
@@ -621,6 +746,7 @@ export default function POSPage() {
 
         const itemsPayload = cartItems.map((it) => {
           if (it.kind === "drink") {
+            const cat = String(it.category || "").trim();
             return {
               itemType: "drink",
               drinkId: it.drinkId,
@@ -630,8 +756,10 @@ export default function POSPage() {
               total: (it.quantity || 0) * (it.unitPrice || 0),
               costPrice: 0,
               barcode: "",
+              category: cat || undefined,
             };
           }
+          const pCat = String(it.category || "").trim();
           return {
             productId: it.productId,
             nameAr: it.nameAr,
@@ -640,6 +768,7 @@ export default function POSPage() {
             unitPrice: it.unitPrice,
             total: (it.quantity || 0) * (it.unitPrice || 0),
             costPrice: it.costPrice || 0,
+            category: pCat || undefined,
           };
         });
 
@@ -648,7 +777,7 @@ export default function POSPage() {
           items: itemsPayload,
           totalAmount,
           totalCost,
-          paymentMethod: "نقدي",
+          paymentMethod: paymentMethodLabel,
           createdAt,
           createdBy: user?.uid || "",
         });
@@ -660,6 +789,7 @@ export default function POSPage() {
         createdAt,
         totalAmount: totalAmountForReceipt,
         items: itemsForReceipt,
+        paymentMethod: paymentMethodLabel,
       };
       printReceiptInWindow(receiptPayload);
       setCartItems([]);
@@ -683,6 +813,16 @@ export default function POSPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCompleteSale = () => {
+    if (cartItems.length === 0) {
+      showNotification("السلة فارغة", "warning");
+      return;
+    }
+    const opt = PAYMENT_OPTIONS.find((o) => o.id === selectedPaymentId);
+    const label = opt?.label ?? "كاش";
+    void completeSaleWithPayment(label);
   };
 
   return (
@@ -713,45 +853,12 @@ export default function POSPage() {
         ))}
       </div>
 
-      <div className={styles.header}>
-        <h2 className={styles.pageTitle}>نقطة البيع</h2>
-      </div>
-
-      <form className={styles.barcodeSection} onSubmit={handleBarcodeSubmit}>
-        <div className={styles.barcodeInputWrap}>
-          <FaBarcode className={styles.barcodeIcon} />
-          <input
-            ref={barcodeRef}
-            className={styles.barcodeInput}
-            value={barcodeInput}
-            onChange={(e) => setBarcodeInput(e.target.value)}
-            placeholder="أدخل/امسح باركود المنتج ثم اضغط Enter"
-            inputMode="numeric"
-            autoComplete="off"
-            disabled={searching || submitting}
-          />
-        </div>
-        <button
-          type="submit"
-          className={styles.barcodeButton}
-          disabled={!barcodeInput.trim() || searching || submitting}
-        >
-          {searching ? (
-            <>
-              <FaSpinner className={styles.spinner} />
-              <span>جارٍ الإضافة...</span>
-            </>
-          ) : (
-            <>
-              <FaPlus />
-              <span>إضافة</span>
-            </>
-          )}
-        </button>
-      </form>
-
-      <div className={styles.posMain}>
-        <div className={styles.posGrid}>
+      <div className={styles.posRow}>
+        <div className={styles.catalogColumn}>
+          <div className={styles.header}>
+            <h2 className={styles.pageTitle}>نقطة البيع</h2>
+          </div>
+          <div className={styles.posGrid}>
           <section className={styles.catalogSection}>
             <div className={styles.catalogHeader}>
               <h3 className={styles.catalogTitle}>المشروبات والمنتجات</h3>
@@ -916,6 +1023,41 @@ export default function POSPage() {
             ) : null}
           </aside>
         </div>
+        </div>
+
+        <div className={styles.cartColumn}>
+          <form className={styles.barcodeSection} onSubmit={handleBarcodeSubmit}>
+            <div className={styles.barcodeInputWrap}>
+              <FaBarcode className={styles.barcodeIcon} />
+              <input
+                ref={barcodeRef}
+                className={styles.barcodeInput}
+                value={barcodeInput}
+                onChange={(e) => setBarcodeInput(e.target.value)}
+                placeholder="أدخل/امسح باركود المنتج ثم اضغط Enter"
+                inputMode="numeric"
+                autoComplete="off"
+                disabled={searching || submitting}
+              />
+            </div>
+            <button
+              type="submit"
+              className={styles.barcodeButton}
+              disabled={!barcodeInput.trim() || searching || submitting}
+            >
+              {searching ? (
+                <>
+                  <FaSpinner className={styles.spinner} />
+                  <span>جارٍ الإضافة...</span>
+                </>
+              ) : (
+                <>
+                  <FaPlus />
+                  <span>إضافة</span>
+                </>
+              )}
+            </button>
+          </form>
 
         {cartItems.length === 0 ? (
           <div className={styles.emptyState}>
@@ -1006,6 +1148,39 @@ export default function POSPage() {
               </table>
             </div>
 
+            <div className={styles.paymentMethodInline}>
+              <span className={styles.paymentMethodInlineTitle} id="pos-payment-label">
+                طريقة الدفع
+              </span>
+              <ul
+                className={`${styles.paymentOptionList} ${styles.paymentOptionListInline}`}
+                role="radiogroup"
+                aria-labelledby="pos-payment-label"
+              >
+                {PAYMENT_OPTIONS.map((opt) => (
+                  <li key={opt.id}>
+                    <label
+                      className={`${styles.paymentOptionLabel} ${
+                        selectedPaymentId === opt.id
+                          ? styles.paymentOptionLabelSelected
+                          : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={opt.id}
+                        checked={selectedPaymentId === opt.id}
+                        onChange={() => setSelectedPaymentId(opt.id)}
+                        disabled={submitting}
+                      />
+                      <span>{opt.label}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             <div className={styles.footerRow}>
               <div className={styles.totalSection}>
                 <span className={styles.totalLabel}>الإجمالي:</span>
@@ -1014,7 +1189,7 @@ export default function POSPage() {
               <button
                 type="button"
                 className={styles.submitButton}
-                onClick={handleSubmitSale}
+                onClick={handleCompleteSale}
                 disabled={submitting || cartItems.length === 0}
               >
                 {submitting ? (
@@ -1029,6 +1204,7 @@ export default function POSPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
       </div>
 

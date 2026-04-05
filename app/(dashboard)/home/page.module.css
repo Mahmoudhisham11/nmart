@@ -89,6 +89,57 @@
   line-height: 1.5;
 }
 
+.cardNetBlock {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .cardNetBlock {
+  border-top-color: #334155;
+}
+
+.cardNetLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+[data-theme="dark"] .cardNetLabel {
+  color: #94a3b8;
+}
+
+.cardNetValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+[data-theme="dark"] .cardNetValue {
+  color: #e5e7eb;
+}
+
+.cardNetValueNegative {
+  color: #b91c1c;
+}
+
+[data-theme="dark"] .cardNetValueNegative {
+  color: #f87171;
+}
+
+.cardNetHint {
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.45;
+}
+
+[data-theme="dark"] .cardNetHint {
+  color: #64748b;
+}
+
 .muted {
   margin: 8px 0 0;
   font-size: 13px;
@@ -135,6 +186,91 @@
 
 [data-theme="dark"] .subsectionTitle {
   color: #cbd5e1;
+}
+
+.invoiceFilterBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .invoiceFilterBar {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.invoiceFilterLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .invoiceFilterLabel {
+  color: #94a3b8;
+}
+
+.invoiceFilterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.invoiceFilterChip {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.invoiceFilterChip:hover {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+[data-theme="dark"] .invoiceFilterChip {
+  background: #1e293b;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .invoiceFilterChip:hover {
+  border-color: #ea580c;
+  background: #334155;
+}
+
+.invoiceFilterChipActive {
+  border-color: #ea580c;
+  background: #fff7ed;
+  color: #c2410c;
+  box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.25);
+}
+
+[data-theme="dark"] .invoiceFilterChipActive {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fdba74;
+  border-color: #ea580c;
+  box-shadow: none;
+}
+
+.invoiceFilterHint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .invoiceFilterHint {
+  color: #64748b;
 }
 
 .closeDayButton {
@@ -613,6 +749,103 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Shift close summary modal (matches print content only) */
+.shiftCloseModal {
+  max-width: 480px;
+}
+
+.shiftCloseBody {
+  overflow: visible;
+}
+
+.shiftCloseHint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.65;
+}
+
+[data-theme="dark"] .shiftCloseHint {
+  color: #94a3b8;
+}
+
+.shiftSummaryPrintTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.shiftSummaryPrintTable th,
+.shiftSummaryPrintTable td {
+  border: 1px solid #e5e7eb;
+  padding: 12px 14px;
+  text-align: right;
+}
+
+.shiftSummaryPrintTable th {
+  background: #f3f4f6;
+  font-weight: 700;
+  width: 55%;
+  color: #374151;
+}
+
+.shiftSummaryPrintTable td {
+  font-weight: 800;
+  color: #111827;
+}
+
+[data-theme="dark"] .shiftSummaryPrintTable th,
+[data-theme="dark"] .shiftSummaryPrintTable td {
+  border-color: #334155;
+}
+
+[data-theme="dark"] .shiftSummaryPrintTable th {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .shiftSummaryPrintTable td {
+  color: #e5e7eb;
+}
+
+.shiftCloseFooter {
+  flex-wrap: wrap;
+}
+
+.modalButtonPrint {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalButtonPrint:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.modalButtonPrint:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .modalButtonPrint {
+  background: #334155;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .modalButtonPrint:hover:not(:disabled) {
+  background: #475569;
 }
 
 .panelTitle {

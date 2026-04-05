@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
@@ -13,93 +13,165 @@ import {
 } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
 import {
+  aggregateShiftPaymentTotals,
+  printShiftSummary,
+} from "@/lib/printShiftSummary";
+import {
   FaDollarSign,
   FaChartLine,
   FaExclamationTriangle,
   FaLock,
+  FaPrint,
+  FaReceipt,
   FaSpinner,
 } from "react-icons/fa";
 import styles from "./page.module.css";
 import { useAuth } from "@/components/AuthContext";
 
+const INVOICE_PAYMENT_FILTER_OPTIONS = [
+  { id: "all", label: "الكل" },
+  { id: "cash", label: "كاش" },
+  { id: "visa", label: "فيزا" },
+  { id: "wallet", label: "محفظة" },
+  { id: "instapay", label: "انستا باي" },
+];
+
+function invoiceMatchesPaymentFilter(inv, filterId) {
+  if (filterId === "all") return true;
+  const pm = String(inv.paymentMethod ?? "").trim();
+  if (filterId === "visa") return pm === "فيزا";
+  if (filterId === "wallet") return pm === "محفظة";
+  if (filterId === "instapay") return pm === "انستا باي";
+  if (filterId === "cash") {
+    return pm !== "فيزا" && pm !== "محفظة" && pm !== "انستا باي";
+  }
+  return true;
+}
+
+function paymentMethodDisplayLabel(inv) {
+  const pm = String(inv?.paymentMethod ?? "").trim();
+  if (pm === "فيزا") return "فيزا";
+  if (pm === "محفظة") return "محفظة";
+  if (pm === "انستا باي") return "انستا باي";
+  return "كاش";
+}
+
 export default function HomeDashboardPage() {
   const { user, profile } = useAuth();
-  const isOwner = (profile?.role || "").toLowerCase() === "owner";
+  const role = (profile?.role || "").toLowerCase();
+  const isOwner = role === "owner";
+  const canManageExpenses = isOwner || role === "manager";
   const [todaySales, setTodaySales] = useState(0);
   const [todayProfit, setTodayProfit] = useState(0);
+  const [todayExpensesTotal, setTodayExpensesTotal] = useState(0);
   const [todayInvoicesCount, setTodayInvoicesCount] = useState(0);
   const [todayInvoices, setTodayInvoices] = useState([]);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [topProducts, setTopProducts] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [closing, setClosing] = useState(false);
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null);
+  const [invoicePaymentFilter, setInvoicePaymentFilter] = useState("all");
+
+  const [shiftCloseOpen, setShiftCloseOpen] = useState(false);
+
+  const filteredInvoices = useMemo(
+    () =>
+      (todayInvoices ?? []).filter((inv) =>
+        invoiceMatchesPaymentFilter(inv, invoicePaymentFilter)
+      ),
+    [todayInvoices, invoicePaymentFilter]
+  );
+
+  const loadStats = useCallback(async () => {
+    const todayDayKey = new Date().toISOString().slice(0, 10);
+
+    try {
+      const salesRef = collection(firestore, "sales");
+      const salesSnap = await getDocs(salesRef);
+      let totalRevenue = 0;
+      let totalCost = 0;
+      const invoiceRows = [];
+      salesSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        totalRevenue += data.totalAmount || 0;
+        totalCost += data.totalCost || 0;
+        invoiceRows.push({
+          id: docSnap.id,
+          invoiceNumber: data.invoiceNumber || "—",
+          totalAmount: data.totalAmount || 0,
+          createdAt: data.createdAt || "",
+          paymentMethod: data.paymentMethod,
+          items: Array.isArray(data.items) ? data.items : [],
+        });
+      });
+      invoiceRows.sort((a, b) =>
+        String(b.createdAt).localeCompare(String(a.createdAt))
+      );
+      setTodaySales(totalRevenue);
+      setTodayProfit(totalRevenue - totalCost);
+      setTodayInvoicesCount(invoiceRows.length);
+      setTodayInvoices(invoiceRows);
+    } catch (e) {
+      console.error("خطأ في قراءة مبيعات اليوم", e);
+    }
+
+    try {
+      const expQ = query(
+        collection(firestore, "expenses"),
+        where("dayKey", "==", todayDayKey)
+      );
+      const expSnap = await getDocs(expQ);
+      let expSum = 0;
+      expSnap.forEach((d) => {
+        expSum += Number(d.data().amount || 0);
+      });
+      setTodayExpensesTotal(expSum);
+    } catch (e) {
+      console.error("خطأ في قراءة مصاريف اليوم", e);
+      setTodayExpensesTotal(0);
+    }
+
+    try {
+      const productsRef = collection(firestore, "products");
+      const productsSnap = await getDocs(productsRef);
+      const low = [];
+      productsSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (
+          typeof data.quantity === "number" &&
+          typeof data.lowStockThreshold === "number" &&
+          data.quantity <= data.lowStockThreshold
+        ) {
+          low.push(data);
+        }
+      });
+      setLowStockCount(low.length);
+      setLowStockProducts(low.slice(0, 5));
+    } catch (e) {
+      console.error("خطأ في قراءة المنتجات", e);
+    }
+
+    try {
+      const bestRef = collection(firestore, "topProducts");
+      const bestSnap = await getDocs(bestRef);
+      const best = [];
+      bestSnap.forEach((docSnap) => best.push(docSnap.data()));
+      setTopProducts(best.slice(0, 5));
+    } catch (e) {
+      // optional collection
+    }
+  }, []);
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const salesRef = collection(firestore, "sales");
-        const salesSnap = await getDocs(salesRef);
-        let totalRevenue = 0;
-        let totalCost = 0;
-        const invoiceRows = [];
-        salesSnap.forEach((docSnap) => {
-          const data = docSnap.data();
-          totalRevenue += data.totalAmount || 0;
-          totalCost += data.totalCost || 0;
-          invoiceRows.push({
-            id: docSnap.id,
-            invoiceNumber: data.invoiceNumber || "—",
-            totalAmount: data.totalAmount || 0,
-            createdAt: data.createdAt || "",
-            items: Array.isArray(data.items) ? data.items : [],
-          });
-        });
-        invoiceRows.sort((a, b) =>
-          String(b.createdAt).localeCompare(String(a.createdAt))
-        );
-        setTodaySales(totalRevenue);
-        setTodayProfit(totalRevenue - totalCost);
-        setTodayInvoicesCount(invoiceRows.length);
-        setTodayInvoices(invoiceRows);
-      } catch (e) {
-        console.error("خطأ في قراءة مبيعات اليوم", e);
-      }
-
-      try {
-        const productsRef = collection(firestore, "products");
-        const productsSnap = await getDocs(productsRef);
-        const low = [];
-        productsSnap.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (
-            typeof data.quantity === "number" &&
-            typeof data.lowStockThreshold === "number" &&
-            data.quantity <= data.lowStockThreshold
-          ) {
-            low.push(data);
-          }
-        });
-        setLowStockCount(low.length);
-        setLowStockProducts(low.slice(0, 5));
-      } catch (e) {
-        console.error("خطأ في قراءة المنتجات", e);
-      }
-
-      try {
-        const bestRef = collection(firestore, "topProducts");
-        const bestSnap = await getDocs(bestRef);
-        const best = [];
-        bestSnap.forEach((docSnap) => best.push(docSnap.data()));
-        setTopProducts(best.slice(0, 5));
-      } catch (e) {
-        // optional collection
-      }
-    };
-
     loadStats();
-  }, []);
+  }, [loadStats]);
+
+  useEffect(() => {
+    const onFocus = () => loadStats();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadStats]);
 
   const formatCurrency = (value) =>
     new Intl.NumberFormat("ar-EG", {
@@ -126,6 +198,27 @@ export default function HomeDashboardPage() {
     if (!inv || typeof inv !== "object") return [];
     const raw = inv.items;
     return Array.isArray(raw) ? raw : [];
+  };
+
+  const closeShiftModalOnly = () => {
+    if (closing) return;
+    setShiftCloseOpen(false);
+  };
+
+  const openShiftCloseModal = useCallback(() => {
+    if (todayInvoicesCount === 0) return;
+    setShiftCloseOpen(true);
+  }, [todayInvoicesCount]);
+
+  const shiftPaymentTotals = aggregateShiftPaymentTotals(todayInvoices);
+
+  const handlePrintShiftSummary = () => {
+    printShiftSummary({
+      salesTotal: todaySales,
+      expensesTotal: todayExpensesTotal,
+      ...shiftPaymentTotals,
+      generatedAt: new Date().toISOString(),
+    });
   };
 
   const handleCloseShift = async () => {
@@ -165,6 +258,45 @@ export default function HomeDashboardPage() {
           Object.entries(o).filter(([, v]) => v !== undefined)
         );
 
+      /** مصاريف نفس اليوم → أرشفة في shiftClosures/{shiftId}/archivedExpenses ثم حذف من expenses */
+      const expQ = query(
+        collection(firestore, "expenses"),
+        where("dayKey", "==", dayKey)
+      );
+      const expSnap = await getDocs(expQ);
+      const expDocs = [];
+      expSnap.forEach((d) => expDocs.push(d));
+      let totalExpensesSum = 0;
+      for (const d of expDocs) {
+        totalExpensesSum += Number(d.data().amount || 0);
+      }
+      const EXP_CHUNK = 250;
+      for (let i = 0; i < expDocs.length; i += EXP_CHUNK) {
+        const chunk = expDocs.slice(i, i + EXP_CHUNK);
+        const batch = writeBatch(firestore);
+        for (const d of chunk) {
+          const data = d.data();
+          batch.set(
+            doc(
+              firestore,
+              "shiftClosures",
+              shiftId,
+              "archivedExpenses",
+              d.id
+            ),
+            stripUndefined({
+              ...data,
+              archivedAt: now,
+              originalExpenseId: d.id,
+              shiftId,
+              closureDayKey: dayKey,
+            })
+          );
+          batch.delete(doc(firestore, "expenses", d.id));
+        }
+        await batch.commit();
+      }
+
       /** نقل فواتير الشيفت الحالي إلى shiftClosures/{shiftId}/invoices ثم حذفها من sales */
       const CHUNK = 250;
       for (let i = 0; i < saleDocs.length; i += CHUNK) {
@@ -200,6 +332,8 @@ export default function HomeDashboardPage() {
         totalRevenue,
         totalCost,
         totalProfit: totalRevenue - totalCost,
+        totalExpenses: totalExpensesSum,
+        expensesCount: expDocs.length,
         invoicesCount,
         salesArchived: true,
         closedAt: now,
@@ -216,6 +350,8 @@ export default function HomeDashboardPage() {
       setTodayInvoicesCount(0);
       setTodaySales(0);
       setTodayProfit(0);
+      await loadStats();
+      setShiftCloseOpen(false);
     } catch (e) {
       console.error("خطأ في تقفيل الشيفت", e);
     } finally {
@@ -233,6 +369,21 @@ export default function HomeDashboardPage() {
           <div className={styles.cardTitle}>مبيعات الشيفت الحالي</div>
           <div className={styles.cardValue}>{formatCurrency(todaySales)}</div>
           <div className={styles.cardHint}>إجمالي قيمة فواتير الشيفت المفتوح</div>
+          <div className={styles.cardNetBlock}>
+            <div className={styles.cardNetLabel}>صافي بعد المصاريف</div>
+            <div
+              className={
+                todaySales - todayExpensesTotal < 0
+                  ? `${styles.cardNetValue} ${styles.cardNetValueNegative}`
+                  : styles.cardNetValue
+              }
+            >
+              {formatCurrency(todaySales - todayExpensesTotal)}
+            </div>
+            <div className={styles.cardNetHint}>
+              إجمالي الفواتير ناقص مصاريف اليوم (نفس تاريخ التقفيل UTC)
+            </div>
+          </div>
         </div>
         {isOwner ? (
           <div className={styles.card}>
@@ -240,8 +391,33 @@ export default function HomeDashboardPage() {
               <FaChartLine style={{ color: "#10b981" }} />
             </div>
             <div className={styles.cardTitle}>ربح الشيفت الحالي</div>
-            <div className={styles.cardValue}>{formatCurrency(todayProfit)}</div>
-            <div className={styles.cardHint}>الإيراد - تكلفة البضاعة المباعة بالشيفت الحالي</div>
+            <div
+              className={
+                todayProfit - todayExpensesTotal < 0
+                  ? `${styles.cardValue} ${styles.cardNetValueNegative}`
+                  : styles.cardValue
+              }
+            >
+              {formatCurrency(todayProfit - todayExpensesTotal)}
+            </div>
+            <div className={styles.cardHint}>
+              الإيراد − تكلفة البضاعة − مصاريف اليوم (UTC)
+            </div>
+          </div>
+        ) : null}
+        {canManageExpenses ? (
+          <div className={styles.card}>
+            <div className={styles.cardIcon} style={{ background: "#ffedd5" }}>
+              <FaReceipt style={{ color: "#ea580c" }} />
+            </div>
+            <div className={styles.cardTitle}>مصاريف اليوم</div>
+            <div className={styles.cardValue}>
+              {formatCurrency(todayExpensesTotal)}
+            </div>
+            <div className={styles.cardHint}>
+              مجموع المصاريف المسجّلة لتاريخ اليوم في النظام — سجّل من صفحة
+              المصاريف
+            </div>
           </div>
         ) : null}
         <div className={styles.card}>
@@ -305,7 +481,7 @@ export default function HomeDashboardPage() {
           <button
             type="button"
             className={styles.closeDayButton}
-            onClick={() => setShowCloseConfirm(true)}
+            onClick={() => openShiftCloseModal()}
             disabled={closing || todayInvoicesCount === 0}
             title={todayInvoicesCount === 0 ? "لا توجد فواتير لتقفيل الشيفت" : "تقفيل الشيفت"}
           >
@@ -321,39 +497,80 @@ export default function HomeDashboardPage() {
         {(todayInvoices ?? []).length === 0 ? (
           <p className={styles.invoiceEmpty}>لا توجد فواتير مسجّلة في الشيفت الحالي بعد.</p>
         ) : (
-          <ul className={styles.invoiceList}>
-            {(todayInvoices ?? []).map((inv) => (
-              <li key={inv.id} className={styles.invoiceListItem}>
-                <button
-                  type="button"
-                  className={styles.invoiceItem}
-                  onClick={() =>
-                    setInvoiceModal({
-                      ...inv,
-                      items: normalizeInvoiceItems(inv),
-                    })
-                  }
-                >
-                  <div className={styles.invoiceLeft}>
-                    <div className={styles.invoiceIcon}>
-                      <FaDollarSign />
-                    </div>
-                    <div className={styles.invoiceMeta}>
-                      <span className={styles.invoiceNumber}>
-                        فاتورة {inv.invoiceNumber}
-                      </span>
-                      <span className={styles.invoiceSub}>
-                        {formatInvoiceTime(inv.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                  <span className={styles.invoiceTotal}>
-                    {formatCurrency(inv.totalAmount)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <div className={styles.invoiceFilterBar}>
+              <span className={styles.invoiceFilterLabel} id="invoice-filter-label">
+                تصفية حسب طريقة الدفع
+              </span>
+              <div
+                className={styles.invoiceFilterChips}
+                role="group"
+                aria-labelledby="invoice-filter-label"
+              >
+                {INVOICE_PAYMENT_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`${styles.invoiceFilterChip} ${
+                      invoicePaymentFilter === opt.id
+                        ? styles.invoiceFilterChipActive
+                        : ""
+                    }`}
+                    onClick={() => setInvoicePaymentFilter(opt.id)}
+                    aria-pressed={invoicePaymentFilter === opt.id}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {filteredInvoices.length === 0 ? (
+              <p className={styles.invoiceEmpty}>
+                لا توجد فواتير تطابق طريقة الدفع المختارة.
+              </p>
+            ) : (
+              <>
+                <p className={styles.invoiceFilterHint}>
+                  عرض {filteredInvoices.length} من أصل{" "}
+                  {(todayInvoices ?? []).length} فاتورة
+                </p>
+                <ul className={styles.invoiceList}>
+                  {filteredInvoices.map((inv) => (
+                    <li key={inv.id} className={styles.invoiceListItem}>
+                      <button
+                        type="button"
+                        className={styles.invoiceItem}
+                        onClick={() =>
+                          setInvoiceModal({
+                            ...inv,
+                            items: normalizeInvoiceItems(inv),
+                          })
+                        }
+                      >
+                        <div className={styles.invoiceLeft}>
+                          <div className={styles.invoiceIcon}>
+                            <FaDollarSign />
+                          </div>
+                          <div className={styles.invoiceMeta}>
+                            <span className={styles.invoiceNumber}>
+                              فاتورة {inv.invoiceNumber}
+                            </span>
+                            <span className={styles.invoiceSub}>
+                              {formatInvoiceTime(inv.createdAt)} ·{" "}
+                              {paymentMethodDisplayLabel(inv)}
+                            </span>
+                          </div>
+                        </div>
+                        <span className={styles.invoiceTotal}>
+                          {formatCurrency(inv.totalAmount)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
         )}
       </section>
 
@@ -384,7 +601,8 @@ export default function HomeDashboardPage() {
             </div>
             <div className={styles.modalBody}>
               <p className={styles.invoiceModalMeta}>
-                {formatInvoiceTime(invoiceModal.createdAt)} · الإجمالي{" "}
+                {formatInvoiceTime(invoiceModal.createdAt)} ·{" "}
+                {paymentMethodDisplayLabel(invoiceModal)} · الإجمالي{" "}
                 {formatCurrency(invoiceModal.totalAmount)}
               </p>
               {(() => {
@@ -446,43 +664,84 @@ export default function HomeDashboardPage() {
         </div>
       ) : null}
 
-      {showCloseConfirm && (
+      {shiftCloseOpen && (
         <div
           className={styles.modalOverlay}
-          onClick={() => !closing && setShowCloseConfirm(false)}
+          onClick={() => !closing && closeShiftModalOnly()}
         >
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`${styles.modal} ${styles.shiftCloseModal}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>تأكيد تقفيل الشيفت</h3>
+              <h3 className={styles.modalTitle}>ملخص تقفيل الشيفت</h3>
               <button
+                type="button"
                 className={styles.modalClose}
-                onClick={() => !closing && setShowCloseConfirm(false)}
+                onClick={() => !closing && closeShiftModalOnly()}
                 disabled={closing}
               >
                 ×
               </button>
             </div>
-            <div className={styles.modalBody}>
-              <p className={styles.modalText}>
-                هل أنت متأكد أنك تريد تقفيل الشيفت الحالي؟
-                <br />
-                سيتم أرشفة فواتير الشيفت الحالي، ويمكنك البيع فورًا في شيفت جديد.
+            <div className={`${styles.modalBody} ${styles.shiftCloseBody}`}>
+              <p className={styles.shiftCloseHint}>
+                ما يلي هو نفس ما سيظهر عند الطباعة. عند التأكيد تُؤرشف الفواتير
+                ويبدأ شيفت جديد.
               </p>
+              <table className={styles.shiftSummaryPrintTable}>
+                <tbody>
+                  <tr>
+                    <th scope="row">إجمالي المبيعات</th>
+                    <td>{formatCurrency(todaySales)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">إجمالي المصاريف</th>
+                    <td>{formatCurrency(todayExpensesTotal)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">إجمالي الكاش</th>
+                    <td>{formatCurrency(shiftPaymentTotals.totalCash)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">إجمالي الفيزا</th>
+                    <td>{formatCurrency(shiftPaymentTotals.totalVisa)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">إجمالي المحفظة</th>
+                    <td>{formatCurrency(shiftPaymentTotals.totalWallet)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">إجمالي انستا باي</th>
+                    <td>{formatCurrency(shiftPaymentTotals.totalInstapay)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div className={styles.modalFooter}>
+            <div className={`${styles.modalFooter} ${styles.shiftCloseFooter}`}>
               <button
+                type="button"
                 className={styles.modalButtonSecondary}
-                onClick={() => !closing && setShowCloseConfirm(false)}
+                onClick={closeShiftModalOnly}
                 disabled={closing}
               >
                 إلغاء
               </button>
               <button
+                type="button"
+                className={styles.modalButtonPrint}
+                onClick={handlePrintShiftSummary}
+                disabled={closing}
+              >
+                <FaPrint aria-hidden />
+                طباعة
+              </button>
+              <button
+                type="button"
                 className={styles.modalButtonDanger}
                 onClick={async () => {
                   if (closing) return;
                   await handleCloseShift();
-                  setShowCloseConfirm(false);
                 }}
                 disabled={closing}
               >

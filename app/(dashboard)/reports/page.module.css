@@ -42,7 +42,7 @@
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
 }
 
@@ -106,6 +106,20 @@
 
 [data-theme="dark"] .statValue {
   color: #e5e7eb;
+}
+
+.statValueNegative {
+  color: #b91c1c;
+}
+
+[data-theme="dark"] .statValueNegative {
+  color: #f87171;
+}
+
+.expenseAmountCell {
+  font-weight: 800;
+  color: #ea580c;
+  white-space: nowrap;
 }
 
 .statHint {
@@ -385,4 +399,175 @@
 .kindDrink {
   background: rgba(99, 102, 241, 0.15);
   color: #6366f1;
+}
+
+/* طباعة تقرير اليوم حسب الأقسام */
+.reportPrintBar {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .reportPrintBar {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.reportPrintBarTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.reportPrintBarTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: #374151;
+}
+
+[data-theme="dark"] .reportPrintBarTitle {
+  color: #e2e8f0;
+}
+
+.reportPrintBarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.reportPrintQuickBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.reportPrintQuickBtn:hover {
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .reportPrintQuickBtn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .reportPrintQuickBtn:hover {
+  background: #334155;
+}
+
+.reportPrintBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.reportPrintBtn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.reportPrintBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .reportPrintBtn {
+  background: #334155;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .reportPrintBtn:hover:not(:disabled) {
+  background: #475569;
+}
+
+.reportPrintTotals {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .reportPrintTotals {
+  color: #94a3b8;
+}
+
+.reportPrintWarn {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+[data-theme="dark"] .reportPrintWarn {
+  color: #fbbf24;
+}
+
+.reportPrintChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reportPrintCatLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+}
+
+[data-theme="dark"] .reportPrintCatLabel {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.reportPrintCheckbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #ea580c;
+  cursor: pointer;
+}
+
+.reportPrintCatName {
+  font-weight: 800;
+}
+
+.reportPrintCatMeta {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .reportPrintCatMeta {
+  color: #94a3b8;
 }

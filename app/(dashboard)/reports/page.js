@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { firestore } from "@/lib/firebase";
+import { printHtmlDocument } from "@/lib/printHtmlDocument";
 import {
   FaCalendarAlt,
   FaChartLine,
   FaDollarSign,
+  FaPrint,
+  FaReceipt,
   FaSpinner,
 } from "react-icons/fa";
 import styles from "./page.module.css";
@@ -129,6 +132,96 @@ function aggregateLines(invoices, productCategoryById, drinkCategoryById, produc
   });
 }
 
+function escapeHtmlPrint(v) {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatPrintDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("ar-EG-u-nu-latn", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function buildReportDayCategoriesPrintHtml({
+  reportDate,
+  printedAtIso,
+  blocks,
+  formatMoney,
+}) {
+  const at = formatPrintDateTime(printedAtIso);
+  let sections = "";
+  let grandRev = 0;
+  let grandQty = 0;
+  for (const block of blocks) {
+    grandRev += block.revSum;
+    grandQty += block.qtySum;
+    const rows = block.rows
+      .map(
+        (row) =>
+          `<tr>
+        <td>${escapeHtmlPrint(row.kind === "drink" ? "مشروب" : "منتج")}</td>
+        <td>${escapeHtmlPrint(row.nameAr)}</td>
+        <td>${escapeHtmlPrint(String(row.quantity))}</td>
+        <td>${escapeHtmlPrint(formatMoney(row.revenue))}</td>
+      </tr>`
+      )
+      .join("");
+    sections += `
+  <section class="sec">
+    <h2>${escapeHtmlPrint(block.catName)}</h2>
+    <table>
+      <thead><tr><th>النوع</th><th>الصنف</th><th>الكمية</th><th>إجمالي البيع</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr class="subtotal"><th colspan="3" scope="row">إجمالي القسم (إيراد)</th><td>${escapeHtmlPrint(formatMoney(block.revSum))}</td></tr>
+        <tr class="subqty"><th colspan="3" scope="row">إجمالي كمية القسم</th><td>${escapeHtmlPrint(String(block.qtySum))}</td></tr>
+      </tfoot>
+    </table>
+  </section>`;
+  }
+
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <title>تقرير أقسام ${escapeHtmlPrint(reportDate)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, Tahoma, sans-serif; padding: 20px; color: #111; max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    .meta { color: #6b7280; font-size: 13px; margin-bottom: 16px; }
+    h2 { font-size: 16px; margin: 20px 0 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: right; }
+    th { background: #f3f4f6; font-weight: 800; }
+    tfoot .subtotal td { font-weight: 800; }
+    .grand { margin-top: 24px; padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 15px; }
+    .grand div { margin-bottom: 6px; }
+    @media print { body { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <h1>تقرير مبيعات الأقسام</h1>
+  <p class="meta">تاريخ اليوم: <strong>${escapeHtmlPrint(reportDate)}</strong> · تاريخ الطباعة: ${escapeHtmlPrint(at)}</p>
+  ${sections}
+  <div class="grand">
+    <div>إجمالي الأقسام المحددة — كمية: <strong>${escapeHtmlPrint(String(grandQty))}</strong></div>
+    <div>إجمالي الأقسام المحددة — إيراد: <strong>${escapeHtmlPrint(formatMoney(grandRev))}</strong></div>
+  </div>
+</body>
+</html>`;
+}
+
 export default function ReportsPage() {
   const [closures, setClosures] = useState([]);
   const [products, setProducts] = useState([]);
@@ -137,8 +230,12 @@ export default function ReportsPage() {
   const [error, setError] = useState("");
   const [reportDate, setReportDate] = useState("");
   const [dayInvoices, setDayInvoices] = useState([]);
+  const [dayArchivedExpenseRows, setDayArchivedExpenseRows] = useState([]);
   const [loadingDay, setLoadingDay] = useState(false);
   const [dayError, setDayError] = useState("");
+  const [reportPrintSelectedCats, setReportPrintSelectedCats] = useState(
+    () => new Set()
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -180,6 +277,7 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!reportDate) {
       setDayInvoices([]);
+      setDayArchivedExpenseRows([]);
       setLoadingDay(false);
       setDayError("");
       return;
@@ -187,13 +285,13 @@ export default function ReportsPage() {
 
     let cancelled = false;
     setDayInvoices([]);
+    setDayArchivedExpenseRows([]);
     (async () => {
       setLoadingDay(true);
       setDayError("");
       try {
-        const shiftIds = closures
-          .filter((c) => c.dayKey === reportDate)
-          .map((c) => String(c.shiftId || c.id));
+        const dayShifts = closures.filter((c) => c.dayKey === reportDate);
+        const shiftIds = dayShifts.map((c) => String(c.shiftId || c.id));
 
         const archivedNested = await Promise.all(
           shiftIds.map((sid) =>
@@ -205,6 +303,37 @@ export default function ReportsPage() {
           snap.forEach((d) => archived.push({ id: d.id, ...d.data() }));
         }
 
+        const expNested = await Promise.all(
+          shiftIds.map((sid) =>
+            getDocs(
+              collection(firestore, "shiftClosures", sid, "archivedExpenses")
+            )
+          )
+        );
+        const expenseRows = [];
+        for (let i = 0; i < shiftIds.length; i++) {
+          const sid = shiftIds[i];
+          const closure = dayShifts.find(
+            (c) => String(c.shiftId || c.id) === sid
+          );
+          const label =
+            closure?.shiftLabel || `شيفت ${closure?.shiftNumber ?? "—"}`;
+          expNested[i].forEach((d) =>
+            expenseRows.push({
+              rowKey: `${sid}-${d.id}`,
+              docId: d.id,
+              shiftId: sid,
+              shiftLabel: label,
+              ...d.data(),
+            })
+          );
+        }
+        expenseRows.sort((a, b) =>
+          String(b.archivedAt || b.createdAt || "").localeCompare(
+            String(a.archivedAt || a.createdAt || "")
+          )
+        );
+
         const salesSnap = await getDocs(collection(firestore, "sales"));
         const open = [];
         salesSnap.forEach((d) => {
@@ -214,11 +343,15 @@ export default function ReportsPage() {
           }
         });
 
-        if (!cancelled) setDayInvoices([...archived, ...open]);
+        if (!cancelled) {
+          setDayInvoices([...archived, ...open]);
+          setDayArchivedExpenseRows(expenseRows);
+        }
       } catch (e) {
         console.error(e);
         if (!cancelled) {
           setDayInvoices([]);
+          setDayArchivedExpenseRows([]);
           setDayError("تعذر تحميل فواتير اليوم المحدد.");
         }
       } finally {
@@ -272,19 +405,34 @@ export default function ReportsPage() {
     ]
   );
 
-  const { sumRevenue, sumProfit, shiftCount } = useMemo(() => {
-    let sumRevenue = 0;
-    let sumProfit = 0;
-    for (const c of closures) {
-      sumRevenue += c.totalRevenue || 0;
-      sumProfit += closureProfit(c);
+  useEffect(() => {
+    if (categoryBlocks.length === 0) {
+      setReportPrintSelectedCats(new Set());
+      return;
     }
-    return {
-      sumRevenue,
-      sumProfit,
-      shiftCount: closures.length,
-    };
-  }, [closures]);
+    setReportPrintSelectedCats(
+      new Set(categoryBlocks.map((b) => b.catName))
+    );
+  }, [categoryBlocks]);
+
+  const { sumRevenue, sumProfit, shiftCount, sumExpenses, sumNetProfit } =
+    useMemo(() => {
+      let sumRevenue = 0;
+      let sumProfit = 0;
+      let sumExpenses = 0;
+      for (const c of closures) {
+        sumRevenue += c.totalRevenue || 0;
+        sumProfit += closureProfit(c);
+        sumExpenses += Number(c.totalExpenses || 0);
+      }
+      return {
+        sumRevenue,
+        sumProfit,
+        shiftCount: closures.length,
+        sumExpenses,
+        sumNetProfit: sumProfit - sumExpenses,
+      };
+    }, [closures]);
 
   const dayClosures = useMemo(
     () => closures.filter((c) => c.dayKey === reportDate),
@@ -301,9 +449,15 @@ export default function ReportsPage() {
       rev += r;
       prof += r - c;
     }
+    const sumExp = dayClosures.reduce(
+      (s, c) => s + Number(c.totalExpenses || 0),
+      0
+    );
     return {
       sumRevenue: rev,
       sumProfit: prof,
+      sumExpenses: sumExp,
+      sumNetProfit: prof - sumExp,
       shiftCount: dayClosures.length,
       invoiceCount: dayInvoices.length,
     };
@@ -316,10 +470,43 @@ export default function ReportsPage() {
       maximumFractionDigits: 0,
     }).format(value || 0);
 
+  const selectedCategoryBlocksForPrint = useMemo(
+    () =>
+      categoryBlocks.filter((b) => reportPrintSelectedCats.has(b.catName)),
+    [categoryBlocks, reportPrintSelectedCats]
+  );
+
+  const reportPrintSelectedTotals = useMemo(() => {
+    let totalRevenue = 0;
+    let totalQty = 0;
+    for (const b of selectedCategoryBlocksForPrint) {
+      totalRevenue += b.revSum;
+      totalQty += b.qtySum;
+    }
+    return { totalRevenue, totalQty };
+  }, [selectedCategoryBlocksForPrint]);
+
+  const handlePrintReportCategories = () => {
+    if (selectedCategoryBlocksForPrint.length === 0) return;
+    const html = buildReportDayCategoriesPrintHtml({
+      reportDate,
+      printedAtIso: new Date().toISOString(),
+      blocks: selectedCategoryBlocksForPrint,
+      formatMoney: (n) => formatCurrency(n),
+    });
+    printHtmlDocument(html, { iframeTitle: "طباعة تقرير الأقسام" });
+  };
+
   const displayStats =
     reportDate && dayStats
       ? dayStats
-      : { sumRevenue, sumProfit, shiftCount };
+      : {
+          sumRevenue,
+          sumProfit,
+          shiftCount,
+          sumExpenses,
+          sumNetProfit,
+        };
 
   const statsHint = reportDate
     ? "لمُحدَّد: تقفيلات اليوم + أي فواتير مفتوحة (لم تُؤرشف بعد) بنفس التاريخ."
@@ -338,8 +525,9 @@ export default function ReportsPage() {
         <h2 className={styles.introTitle}>التقارير</h2>
         <p className={styles.introText}>
           اختر تاريخاً لمراجعة <strong>مبيعات ذلك اليوم</strong> و<strong>الأصناف المباعة</strong>{" "}
-          مجمّعة حسب <strong>الأقسام</strong> (نفس أقسام المنتجات والمشروبات في نقطة البيع).
-          التقارير الشاملة بدون تاريخ تعرض إجمالي كل التقفيلات فقط.
+          مجمّعة حسب <strong>الأقسام</strong>، و<strong>المصاريف المؤرشفة</strong> مع كل تقفيل
+          (تُنقل تلقائياً من صفحة المصاريف عند تقفيل الشيفت وتُحفظ مع أرشيف ذلك الشيفت).
+          التقارير الشاملة بدون تاريخ تعرض إجمالي كل التقفيلات والمصاريف المؤرشفة.
         </p>
       </section>
 
@@ -437,7 +625,7 @@ export default function ReportsPage() {
                 <FaChartLine style={{ color: "#10b981" }} aria-hidden />
               </div>
               <div className={styles.statTitle}>
-                {reportDate ? "أرباح اليوم" : "إجمالي الأرباح"}
+                {reportDate ? "أرباح اليوم (قبل المصاريف)" : "إجمالي الأرباح"}
               </div>
               <div className={styles.statValue}>
                 {reportDate && loadingDay ? (
@@ -450,8 +638,96 @@ export default function ReportsPage() {
                 الإيراد − تكلفة البضاعة (حيث تتوفر)
               </div>
             </div>
+            <div className={styles.statCard}>
+              <div className={styles.statIcon} style={{ background: "#ffedd5" }}>
+                <FaReceipt style={{ color: "#ea580c" }} aria-hidden />
+              </div>
+              <div className={styles.statTitle}>
+                {reportDate ? "مصاريف مؤرشفة (اليوم)" : "إجمالي المصاريف المؤرشفة"}
+              </div>
+              <div className={styles.statValue}>
+                {reportDate && loadingDay ? (
+                  <FaSpinner className={styles.spinner} aria-label="جارٍ التحميل" />
+                ) : (
+                  formatCurrency(displayStats.sumExpenses ?? 0)
+                )}
+              </div>
+              <div className={styles.statHint}>
+                مبالغ نُقلت مع تقفيل الشيفت إلى archivedExpenses
+              </div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statIcon} style={{ background: "#e0e7ff" }}>
+                <FaChartLine style={{ color: "#4f46e5" }} aria-hidden />
+              </div>
+              <div className={styles.statTitle}>
+                {reportDate ? "صافي الربح بعد المصاريف" : "صافي الأرباح بعد المصاريف"}
+              </div>
+              <div
+                className={`${styles.statValue} ${
+                  (displayStats.sumNetProfit ?? 0) < 0 ? styles.statValueNegative : ""
+                }`}
+              >
+                {reportDate && loadingDay ? (
+                  <FaSpinner className={styles.spinner} aria-label="جارٍ التحميل" />
+                ) : (
+                  formatCurrency(displayStats.sumNetProfit ?? 0)
+                )}
+              </div>
+              <div className={styles.statHint}>أرباح التقارير ناقص المصاريف المؤرشفة</div>
+            </div>
           </div>
         </>
+      ) : null}
+
+      {!loading && reportDate ? (
+        <section className={styles.productsPanel}>
+          <h3 className={styles.productsPanelTitle}>المصاريف المؤرشفة لهذا التاريخ</h3>
+          {loadingDay ? (
+            <p className={styles.muted}>
+              <FaSpinner className={styles.spinner} aria-hidden />
+              جارٍ تحميل المصاريف المؤرشفة...
+            </p>
+          ) : dayArchivedExpenseRows.length === 0 ? (
+            <p className={styles.muted}>
+              لا توجد مصاريف مؤرشفة لهذا اليوم (أو تقفيلات قديمة قبل تفعيل الأرشفة).
+            </p>
+          ) : (
+            <div className={styles.tableWrap}>
+              <table className={styles.linesTable}>
+                <thead>
+                  <tr>
+                    <th>التقفيل</th>
+                    <th>وقت الأرشفة</th>
+                    <th>المبلغ</th>
+                    <th>البيان</th>
+                    <th>سُجّل بواسطة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dayArchivedExpenseRows.map((row) => (
+                    <tr key={row.rowKey}>
+                      <td>{row.shiftLabel}</td>
+                      <td>
+                        {row.archivedAt
+                          ? new Date(row.archivedAt).toLocaleString("ar-EG", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
+                          : "—"}
+                      </td>
+                      <td className={styles.expenseAmountCell}>
+                        {formatCurrency(row.amount)}
+                      </td>
+                      <td>{row.note || "—"}</td>
+                      <td>{row.createdByName || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       ) : null}
 
       {!loading && reportDate ? (
@@ -469,6 +745,90 @@ export default function ReportsPage() {
           ) : categoryBlocks.length === 0 ? (
             <p className={styles.muted}>لا توجد بنود في الفواتير.</p>
           ) : (
+            <>
+              <div className={styles.reportPrintBar}>
+                <div className={styles.reportPrintBarTop}>
+                  <span
+                    className={styles.reportPrintBarTitle}
+                    id="report-print-cats-label"
+                  >
+                    اختر الأقسام للطباعة
+                  </span>
+                  <div className={styles.reportPrintBarActions}>
+                    <button
+                      type="button"
+                      className={styles.reportPrintQuickBtn}
+                      onClick={() =>
+                        setReportPrintSelectedCats(
+                          new Set(categoryBlocks.map((b) => b.catName))
+                        )
+                      }
+                    >
+                      تحديد الكل
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.reportPrintQuickBtn}
+                      onClick={() => setReportPrintSelectedCats(new Set())}
+                    >
+                      إلغاء الكل
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.reportPrintBtn}
+                      onClick={handlePrintReportCategories}
+                      disabled={selectedCategoryBlocksForPrint.length === 0}
+                    >
+                      <FaPrint aria-hidden />
+                      طباعة
+                    </button>
+                  </div>
+                </div>
+                <p className={styles.reportPrintTotals}>
+                  إجمالي المحدد: {formatCurrency(reportPrintSelectedTotals.totalRevenue)}{" "}
+                  · كمية: {reportPrintSelectedTotals.totalQty}
+                </p>
+                {selectedCategoryBlocksForPrint.length === 0 ? (
+                  <p className={styles.reportPrintWarn}>
+                    اختر قسمًا واحدًا على الأقل للطباعة.
+                  </p>
+                ) : null}
+                <div
+                  className={styles.reportPrintChips}
+                  role="group"
+                  aria-labelledby="report-print-cats-label"
+                >
+                  {categoryBlocks.map((block) => (
+                    <label
+                      key={block.catName}
+                      className={styles.reportPrintCatLabel}
+                    >
+                      <input
+                        type="checkbox"
+                        className={styles.reportPrintCheckbox}
+                        checked={reportPrintSelectedCats.has(block.catName)}
+                        onChange={() => {
+                          setReportPrintSelectedCats((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(block.catName)) {
+                              next.delete(block.catName);
+                            } else {
+                              next.add(block.catName);
+                            }
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className={styles.reportPrintCatName}>
+                        {block.catName}
+                      </span>
+                      <span className={styles.reportPrintCatMeta}>
+                        {formatCurrency(block.revSum)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             <div className={styles.categoryStack}>
               {categoryBlocks.map((block) => (
                 <article key={block.catName} className={styles.categoryCard}>
@@ -514,6 +874,7 @@ export default function ReportsPage() {
                 </article>
               ))}
             </div>
+            </>
           )}
         </section>
       ) : !loading && !reportDate && closures.length > 0 ? (

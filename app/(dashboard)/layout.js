@@ -3,18 +3,79 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { FaBars, FaMoon, FaSignOutAlt, FaSun } from "react-icons/fa";
+import {
+  FaBars,
+  FaBoxOpen,
+  FaCalendarAlt,
+  FaCashRegister,
+  FaChartBar,
+  FaClipboardList,
+  FaCog,
+  FaHome,
+  FaMoon,
+  FaReceipt,
+  FaSignOutAlt,
+  FaSun,
+  FaWineGlass,
+} from "react-icons/fa";
 import { AuthProvider, useAuth } from "@/components/AuthContext";
 import styles from "./dashboardLayout.module.css";
 
 const NAV_ITEMS = [
-  { href: "/home", label: "الرئيسية", roles: ["owner", "manager", "cashier"] },
-  { href: "/drinks", label: "المشاريب", roles: ["owner", "manager"] },
-  { href: "/products", label: "المنتجات", roles: ["owner", "manager"] },
-  { href: "/pos", label: "نقطة البيع", roles: ["owner", "manager", "cashier"] },
-  { href: "/day-closures", label: "تقفيلات الأيام", roles: ["owner", "manager"] },
-  { href: "/reports", label: "التقارير", roles: ["owner", "manager"] },
-  { href: "/settings", label: "الإعدادات", roles: ["owner", "manager", "cashier"] },
+  {
+    href: "/home",
+    label: "الرئيسية",
+    icon: FaHome,
+    roles: ["owner", "manager", "cashier"],
+  },
+  {
+    href: "/drinks",
+    label: "المشاريب",
+    icon: FaWineGlass,
+    roles: ["owner", "manager"],
+  },
+  {
+    href: "/products",
+    label: "المنتجات",
+    icon: FaBoxOpen,
+    roles: ["owner", "manager"],
+  },
+  {
+    href: "/inventory",
+    label: "الجرد",
+    icon: FaClipboardList,
+    roles: ["owner", "manager"],
+  },
+  {
+    href: "/pos",
+    label: "نقطة البيع",
+    icon: FaCashRegister,
+    roles: ["owner", "manager", "cashier"],
+  },
+  {
+    href: "/day-closures",
+    label: "تقفيلات الأيام",
+    icon: FaCalendarAlt,
+    roles: ["owner", "manager"],
+  },
+  {
+    href: "/reports",
+    label: "التقارير",
+    icon: FaChartBar,
+    roles: ["owner", "manager"],
+  },
+  {
+    href: "/expenses",
+    label: "المصاريف",
+    icon: FaReceipt,
+    roles: ["owner", "manager"],
+  },
+  {
+    href: "/settings",
+    label: "الإعدادات",
+    icon: FaCog,
+    roles: ["owner", "manager", "cashier"],
+  },
 ];
 
 function DashboardShell({ children }) {
@@ -23,6 +84,7 @@ function DashboardShell({ children }) {
   const { user, profile, loading, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopNavExpanded, setDesktopNavExpanded] = useState(false);
   const [isMobileNav, setIsMobileNav] = useState(false);
   const [theme, setTheme] = useState("light");
   const dropdownRef = useRef(null);
@@ -78,11 +140,13 @@ function DashboardShell({ children }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") setSidebarOpen(false);
+      if (e.key !== "Escape") return;
+      if (isMobileNav) setSidebarOpen(false);
+      else setDesktopNavExpanded(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [isMobileNav]);
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -107,7 +171,15 @@ function DashboardShell({ children }) {
   const handleNavClick = (href) => {
     router.push(href);
     setSidebarOpen(false);
+    if (!isMobileNav) setDesktopNavExpanded(false);
   };
+
+  const handleMenuButtonClick = () => {
+    if (isMobileNav) setSidebarOpen((o) => !o);
+    else setDesktopNavExpanded((o) => !o);
+  };
+
+  const showNavLabels = isMobileNav ? sidebarOpen : desktopNavExpanded;
 
   const handleLogout = async () => {
     await logout();
@@ -152,6 +224,10 @@ function DashboardShell({ children }) {
       title: "إدارة المنتجات",
       description: "عرض وإضافة دفعات وتعديل وحذف المنتجات والمخزون",
     },
+    "/inventory": {
+      title: "الجرد",
+      description: "عرض المنتجات والمباع والمتبقي مع البحث والتصفية بالقسم",
+    },
     "/day-closures": {
       title: "تقفيلات الأيام",
       description: "مراجعة تقفيلات سابقة وفواتير كل يوم بعد الأرشفة",
@@ -159,6 +235,10 @@ function DashboardShell({ children }) {
     "/reports": {
       title: "التقارير",
       description: "إجمالي المبيعات والأرباح من جميع الشيفتات المقفّلة",
+    },
+    "/expenses": {
+      title: "المصاريف",
+      description: "تسجيل مصاريف اليوم ومراجعتها",
     },
   };
   const pageTitle = pageMeta[pathname]?.title || "لوحة التحكم";
@@ -175,7 +255,9 @@ function DashboardShell({ children }) {
         />
       ) : null}
       <aside
-        className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}
+        className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""} ${
+          !isMobileNav && !desktopNavExpanded ? styles.sidebarNarrow : ""
+        } ${!isMobileNav && desktopNavExpanded ? styles.sidebarWideDesktop : ""}`}
         id="dashboard-sidebar"
         aria-hidden={isMobileNav && !sidebarOpen ? true : undefined}
       >
@@ -192,6 +274,7 @@ function DashboardShell({ children }) {
         <nav className={styles.nav} aria-label="التنقل الرئيسي">
           {visibleNav.map((item) => {
             const active = pathname === item.href;
+            const Icon = item.icon;
             return (
               <button
                 key={item.href}
@@ -199,9 +282,16 @@ function DashboardShell({ children }) {
                 onClick={() => handleNavClick(item.href)}
                 className={`${styles.navItem} ${
                   active ? styles.navItemActive : styles.navItemInactive
-                }`}
+                } ${showNavLabels ? "" : styles.navItemIconOnly}`}
+                aria-label={item.label}
+                title={item.label}
               >
-                <span className={styles.navLabel}>{item.label}</span>
+                <span className={styles.navIcon} aria-hidden>
+                  <Icon />
+                </span>
+                {showNavLabels ? (
+                  <span className={styles.navLabel}>{item.label}</span>
+                ) : null}
               </button>
             );
           })}
@@ -212,20 +302,30 @@ function DashboardShell({ children }) {
           <button
             type="button"
             className={styles.menuButton}
-            aria-label="فتح القائمة"
-            aria-expanded={sidebarOpen}
+            aria-label={
+              isMobileNav
+                ? sidebarOpen
+                  ? "إغلاق القائمة"
+                  : "فتح القائمة"
+                : desktopNavExpanded
+                  ? "طي القائمة"
+                  : "توسيع القائمة"
+            }
+            aria-expanded={isMobileNav ? sidebarOpen : desktopNavExpanded}
             aria-controls="dashboard-sidebar"
-            onClick={() => setSidebarOpen((o) => !o)}
+            onClick={handleMenuButtonClick}
           >
             <FaBars />
           </button>
-          <div className={styles.searchContainer}>
-            <input
-              type="text"
-              placeholder="...ابحث هنا"
-              className={styles.searchInput}
-            />
-          </div>
+          {pathname !== "/pos" ? (
+            <div className={styles.searchContainer}>
+              <input
+                type="text"
+                placeholder="...ابحث هنا"
+                className={styles.searchInput}
+              />
+            </div>
+          ) : null}
           <div className={styles.topbarRight}>
             <div className={styles.userInfo}>
               <span>{profile?.displayName || user.email}</span>
@@ -265,7 +365,11 @@ function DashboardShell({ children }) {
             </div>
           </div>
         </header>
-        <section className={styles.content}>
+        <section
+          className={`${styles.content} ${
+            pathname === "/pos" ? styles.contentPos : ""
+          }`}
+        >
           {pathname !== "/pos" && (
             <div className={styles.pageHeader}>
               <h1 className={styles.pageTitle}>{pageTitle}</h1>

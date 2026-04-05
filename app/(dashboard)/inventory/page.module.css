@@ -1,0 +1,270 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+[data-theme="dark"] .title {
+  color: #e5e7eb;
+}
+
+.titleIcon {
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0 0 10px;
+  line-height: 1.6;
+}
+
+[data-theme="dark"] .muted {
+  color: #94a3b8;
+}
+
+.hintNote {
+  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9ca3af;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .hintNote {
+  color: #94a3b8;
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 20px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .filterRow {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  flex: 1 1 220px;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+[data-theme="dark"] .fieldLabel {
+  color: #cbd5e1;
+}
+
+.fieldIcon {
+  color: #ea580c;
+  font-size: 12px;
+}
+
+.textInput,
+.select {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+}
+
+[data-theme="dark"] .textInput,
+[data-theme="dark"] .select {
+  border-color: #475569;
+  background: #1e293b;
+  color: #e5e7eb;
+}
+
+.textInput:focus,
+.select:focus {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+}
+
+.textInput:disabled,
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+[data-theme="dark"] .loadingRow {
+  color: #94a3b8;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  color: #ea580c;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+[data-theme="dark"] .empty {
+  color: #94a3b8;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .tableWrap {
+  border-color: #334155;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  padding: 10px 14px;
+  text-align: right;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+  border-bottom-color: #334155;
+}
+
+.table th {
+  font-weight: 800;
+  color: #374151;
+  background: #f3f4f6;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .table th {
+  color: #e5e7eb;
+  background: #0f172a;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: #fff7ed;
+}
+
+[data-theme="dark"] .table tbody tr:hover td {
+  background: rgba(234, 88, 12, 0.08);
+}
+
+.nameCell {
+  font-weight: 600;
+  color: #111827;
+}
+
+[data-theme="dark"] .nameCell {
+  color: #e5e7eb;
+}
+
+.numCell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #ea580c;
+}
+
+.footerMeta {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .footerMeta {
+  color: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 16px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}
