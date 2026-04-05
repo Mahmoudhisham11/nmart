@@ -234,15 +234,25 @@ export default function POSPage() {
   <title>فاتورة ${escapeHtml(receipt.invoiceNumber)}</title>
   <style>
     :root {
-      --ink: #0f172a;
-      --muted: #64748b;
-      --accent: #ea580c;
-      --accent-dark: #c2410c;
-      --accent-soft: #fff7ed;
-      --line: #e2e8f0;
+      --ink: #000000;
+      --accent-dark: #000000;
+      --accent-soft: #f0f0f0;
     }
-    @page { size: 80mm auto; margin: 4mm; }
-    html, body { margin: 0; padding: 0; background: #f8fafc; font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
+    @page { size: 80mm auto; margin: 3mm; }
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      font-family: Tahoma, Arial, "Segoe UI", sans-serif;
+      font-weight: 800;
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.45;
+    }
     .receipt {
       width: 80mm;
       max-width: 100%;
@@ -253,14 +263,14 @@ export default function POSPage() {
       background: #fff;
       border-radius: 12px;
       overflow: hidden;
-      border: 1px solid var(--line);
-      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+      border: 2px solid #000;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
     }
     .receipt-topbar {
-      height: 5px;
-      background: linear-gradient(90deg, #fb923c, var(--accent), var(--accent-dark));
+      height: 6px;
+      background: #000;
     }
-    .receipt-inner { padding: 12px 10px 14px; }
+    .receipt-inner { padding: 12px 8px 14px; }
     .logo-wrap { text-align: center; margin-bottom: 8px; }
     .logo {
       max-width: 92px;
@@ -272,100 +282,127 @@ export default function POSPage() {
     }
     .doc-title {
       text-align: center;
-      font-size: 11px;
-      font-weight: 800;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
+      font-size: 14px;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: 0.04em;
       margin: 0 0 10px;
     }
     .meta {
-      font-size: 11px;
-      line-height: 1.55;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.5;
       margin-bottom: 10px;
-      background: #f8fafc;
-      border-radius: 10px;
-      padding: 10px 10px;
-      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px 8px;
+      border: 2px solid #000;
     }
     .meta-row {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      gap: 10px;
-      padding: 4px 0;
-      border-bottom: 1px dashed #cbd5e1;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 2px solid #000;
     }
     .meta-row:last-child { border-bottom: none; }
-    .meta-row span:first-child { color: var(--muted); font-weight: 600; }
-    .meta-row strong { font-weight: 800; color: var(--ink); text-align: left; }
-    .meta-row--pay strong { color: var(--accent-dark); font-size: 12px; }
+    .meta-row span:first-child {
+      color: #000;
+      font-weight: 900;
+      font-size: 12px;
+    }
+    .meta-row strong {
+      font-weight: 900;
+      color: #000;
+      text-align: left;
+      font-size: 12px;
+    }
+    .meta-row--pay {
+      margin-top: 2px;
+      padding-top: 8px;
+      border-top: 2px solid #000;
+      border-bottom: 2px solid #000;
+    }
+    .meta-row--pay span:first-child { font-size: 13px; }
+    .meta-row--pay strong { font-size: 14px; }
     .divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--line), transparent);
+      height: 2px;
+      background: #000;
       margin: 10px 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      font-size: 10px;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+      border: 2px solid #000;
     }
     thead th {
-      background: var(--accent-soft);
-      color: var(--accent-dark);
-      font-weight: 800;
-      padding: 8px 5px;
+      background: #000;
+      color: #fff;
+      font-weight: 900;
+      font-size: 12px;
+      padding: 10px 4px;
       text-align: center;
-      border-bottom: 2px solid #fed7aa;
+      border: 2px solid #000;
     }
     tbody td {
-      padding: 7px 5px;
+      padding: 8px 4px;
       text-align: center;
-      border-bottom: 1px solid #f1f5f9;
+      border: 1px solid #000;
       vertical-align: middle;
+      font-weight: 800;
+      color: #000;
     }
-    tbody tr:nth-child(even) td { background: #fafafa; }
-    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: #f5f5f5; }
     .col-name { text-align: right !important; width: 56%; word-break: break-word; }
-    .col-qty { width: 14%; font-weight: 700; }
-    .col-total { text-align: left !important; width: 30%; font-weight: 700; }
+    .col-qty { width: 14%; font-weight: 900; }
+    .col-total { text-align: left !important; width: 30%; font-weight: 900; }
     .total-box {
       margin-top: 12px;
-      padding: 12px 12px;
-      border-radius: 10px;
-      background: var(--accent-soft);
-      border: 1px solid #fed7aa;
+      padding: 12px 10px;
+      border-radius: 8px;
+      background: #fff;
+      border: 3px solid #000;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 8px;
     }
     .total-box span:first-child {
-      font-size: 12px;
-      font-weight: 800;
-      color: var(--accent-dark);
+      font-size: 14px;
+      font-weight: 900;
+      color: #000;
     }
     .total-box .amount {
-      font-size: 15px;
+      font-size: 17px;
       font-weight: 900;
-      color: var(--accent-dark);
-      letter-spacing: -0.02em;
+      color: #000;
     }
     .thanks {
-      margin-top: 12px;
+      margin-top: 14px;
       text-align: center;
-      font-size: 11px;
-      font-weight: 800;
-      color: var(--muted);
-      padding-top: 4px;
+      font-size: 13px;
+      font-weight: 900;
+      color: #000;
+      padding: 8px 4px 4px;
+      border-top: 2px solid #000;
+    }
+    .dev-credit {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 900;
+      color: #000;
+      padding-top: 8px;
+      border-top: 1px solid #000;
+      letter-spacing: 0.02em;
     }
     @media print {
-      html, body { background: #fff; }
-      .receipt { box-shadow: none; border-radius: 0; border: none; }
+      html, body { background: #fff; font-weight: 800; }
+      .receipt { box-shadow: none; border-radius: 0; border: 2px solid #000; }
     }
   </style>
 </head>
@@ -394,6 +431,7 @@ export default function POSPage() {
         <span class="amount">${escapeHtml(formatCurrency(receipt.totalAmount))}</span>
       </div>
       <div class="thanks">شكراً لتعاملكم معنا</div>
+      <div class="dev-credit">تم التطوير بواسطة devoria.com</div>
     </div>
   </div>
 </body>
