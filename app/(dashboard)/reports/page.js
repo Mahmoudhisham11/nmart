@@ -201,38 +201,49 @@ function buildReportDayCategoriesPrintHtml({
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    @page {
+      size: auto;
+      margin: 4mm 6mm;
+    }
+    html, body {
+      height: auto;
+      min-height: 0;
+    }
     body {
       font-family: Tahoma, Arial, "Segoe UI", sans-serif;
-      padding: 6px 8px;
-      margin: 0 auto;
+      padding: 0 0 0;
+      margin: 0;
       max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
       color: #000;
       background: #fff;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 800;
-      line-height: 1.2;
+      line-height: 1.28;
     }
     h1 {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 900;
-      margin: 0 0 4px;
+      margin: 0 0 5px;
       color: #000;
       border-bottom: 2px solid #000;
-      padding-bottom: 3px;
+      padding-bottom: 4px;
     }
     .meta {
       color: #000;
-      font-size: 8px;
+      font-size: 10px;
       font-weight: 800;
-      margin: 0 0 6px;
+      margin: 0 0 8px;
     }
     .meta strong { font-weight: 900; }
-    .sec { margin-bottom: 6px; }
+    .sec { margin-bottom: 8px; }
+    .sec:last-of-type { margin-bottom: 4px; }
     h2 {
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 900;
-      margin: 5px 0 2px;
-      padding: 3px 4px;
+      margin: 6px 0 3px;
+      padding: 4px 6px;
       color: #fff;
       background: #000;
       border: 1px solid #000;
@@ -241,14 +252,14 @@ function buildReportDayCategoriesPrintHtml({
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      font-size: 8px;
+      font-size: 10px;
       font-weight: 800;
-      margin: 0 0 4px;
+      margin: 0 0 5px;
       border: 2px solid #000;
     }
     th, td {
       border: 1px solid #000;
-      padding: 2px 4px;
+      padding: 4px 5px;
       text-align: right;
       vertical-align: middle;
       color: #000;
@@ -257,14 +268,14 @@ function buildReportDayCategoriesPrintHtml({
       background: #000;
       color: #fff;
       font-weight: 900;
-      font-size: 8px;
-      padding: 3px 3px;
+      font-size: 10px;
+      padding: 5px 4px;
     }
     tbody td { background: #fff; }
     tbody tr:nth-child(even) td { background: #f0f0f0; }
     tfoot th, tfoot td {
       font-weight: 900;
-      font-size: 8px;
+      font-size: 10px;
       border: 1px solid #000;
       background: #e8e8e8;
     }
@@ -277,8 +288,8 @@ function buildReportDayCategoriesPrintHtml({
       width: 48%;
       word-break: break-word;
       overflow-wrap: anywhere;
-      font-size: 8px;
-      line-height: 1.15;
+      font-size: 10px;
+      line-height: 1.2;
     }
     .col-qty {
       width: 12%;
@@ -294,17 +305,27 @@ function buildReportDayCategoriesPrintHtml({
     }
     .grand {
       margin-top: 6px;
-      padding: 5px 6px;
+      margin-bottom: 0;
+      padding: 6px 8px;
       background: #f5f5f5;
       border: 2px solid #000;
       border-radius: 4px;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 900;
     }
-    .grand div { margin: 0 0 2px; }
+    .grand div { margin: 0 0 3px; }
     .grand div:last-child { margin-bottom: 0; }
     @media print {
-      body { padding: 4mm 5mm; }
+      @page { margin: 4mm 6mm; size: auto; }
+      body {
+        padding: 0;
+        margin: 0 auto;
+        max-width: none;
+      }
+      html, body {
+        height: auto !important;
+        min-height: 0 !important;
+      }
     }
   </style>
 </head>

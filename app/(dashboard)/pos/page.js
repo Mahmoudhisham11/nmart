@@ -6,8 +6,11 @@ import "swiper/css";
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
+  getDoc,
   getDocs,
+  onSnapshot,
   query,
   runTransaction,
   where,
@@ -15,7 +18,15 @@ import {
 import { firestore } from "@/lib/firebase";
 import { printHtmlDocument } from "@/lib/printHtmlDocument";
 import { useAuth } from "@/components/AuthContext";
-import { FaBarcode, FaMinus, FaPlus, FaSpinner, FaTrash } from "react-icons/fa";
+import {
+  FaBarcode,
+  FaMinus,
+  FaPause,
+  FaPlus,
+  FaSpinner,
+  FaTrash,
+  FaUndo,
+} from "react-icons/fa";
 import styles from "./page.module.css";
 
 const PAYMENT_OPTIONS = [
@@ -40,6 +51,10 @@ export default function POSPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [selectedPaymentId, setSelectedPaymentId] = useState("cash");
+  const [invoiceDiscountStr, setInvoiceDiscountStr] = useState("");
+  const [holdCustomerName, setHoldCustomerName] = useState("");
+  const [heldInvoices, setHeldInvoices] = useState([]);
+  const [holding, setHolding] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isMobile, setIsMobile] = useState(() => {
@@ -381,6 +396,18 @@ export default function POSPage() {
       font-weight: 900;
       color: #000;
     }
+    .total-box--sub .amount { font-size: 10px; font-weight: 800; }
+    .total-box--discount span:first-child { color: #000; }
+    .total-box--discount .amount {
+      font-size: 10px;
+      font-weight: 900;
+      color: #000;
+    }
+    .total-box--final {
+      border-width: 2px;
+      margin-top: 3px;
+    }
+    .total-box--final .amount { font-size: 12px; }
     .thanks {
       margin-top: 5px;
       text-align: center;
@@ -427,10 +454,40 @@ export default function POSPage() {
         </thead>
         <tbody>${rows}</tbody>
       </table>
+      ${
+        Number(receipt.discountAmount || 0) > 0
+          ? `
+      <div class="total-box total-box--sub">
+        <span>المجموع قبل الخصم</span>
+        <span class="amount">${escapeHtml(
+          formatCurrency(
+            typeof receipt.subtotal === "number"
+              ? receipt.subtotal
+              : Number(receipt.totalAmount || 0) +
+                  Number(receipt.discountAmount || 0)
+          )
+        )}</span>
+      </div>
+      <div class="total-box total-box--discount">
+        <span>الخصم</span>
+        <span class="amount">− ${escapeHtml(
+          formatCurrency(Number(receipt.discountAmount || 0))
+        )}</span>
+      </div>
+      <div class="total-box total-box--final">
+        <span>الإجمالي النهائي</span>
+        <span class="amount">${escapeHtml(
+          formatCurrency(Number(receipt.totalAmount || 0))
+        )}</span>
+      </div>`
+          : `
       <div class="total-box">
         <span>الإجمالي</span>
-        <span class="amount">${escapeHtml(formatCurrency(receipt.totalAmount))}</span>
-      </div>
+        <span class="amount">${escapeHtml(
+          formatCurrency(Number(receipt.totalAmount || 0))
+        )}</span>
+      </div>`
+      }
       <div class="thanks">شكراً لتعاملكم معنا</div>
       <div class="dev-credit">Developed By: devoria.com</div>
     </div>
@@ -449,6 +506,168 @@ export default function POSPage() {
       ),
     [cartItems]
   );
+
+  const invoiceDiscountAmount = useMemo(() => {
+    const raw = String(invoiceDiscountStr || "").trim().replace(/,/g, ".");
+    const n = Number.parseFloat(raw);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.min(n, cartTotal);
+  }, [invoiceDiscountStr, cartTotal]);
+
+  const cartFinalTotal = useMemo(
+    () => Math.max(0, cartTotal - invoiceDiscountAmount),
+    [cartTotal, invoiceDiscountAmount]
+  );
+
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setInvoiceDiscountStr("");
+    }
+  }, [cartItems.length]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setHeldInvoices([]);
+      return undefined;
+    }
+    const q = query(
+      collection(firestore, "posHolds"),
+      where("createdBy", "==", user.uid)
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const rows = [];
+        snap.forEach((d) => rows.push({ id: d.id, ...d.data() }));
+        rows.sort((a, b) =>
+          String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+        );
+        setHeldInvoices(rows);
+      },
+      (err) => console.error("posHolds", err)
+    );
+    return () => unsub();
+  }, [user?.uid]);
+
+  const syncCartLinesWithProducts = (lines, productsList) => {
+    const map = new Map(productsList.map((p) => [p.id, p]));
+    return lines.map((line) => {
+      if (line.kind !== "product") return { ...line };
+      const p = map.get(line.productId);
+      const available =
+        p && typeof p.quantity === "number" ? p.quantity : 0;
+      return {
+        ...line,
+        availableQuantity: available,
+        costPrice:
+          p && typeof p.costPrice === "number"
+            ? p.costPrice
+            : line.costPrice ?? 0,
+      };
+    });
+  };
+
+  const holdCurrentInvoice = async () => {
+    if (cartItems.length === 0) {
+      showNotification("السلة فارغة", "warning");
+      return;
+    }
+    if (!user?.uid) {
+      showNotification("يجب تسجيل الدخول", "error");
+      return;
+    }
+    try {
+      setHolding(true);
+      const now = new Date().toISOString();
+      await addDoc(collection(firestore, "posHolds"), {
+        customerName: String(holdCustomerName || "").trim(),
+        cartItems: JSON.parse(JSON.stringify(cartItems)),
+        invoiceDiscountStr: String(invoiceDiscountStr || ""),
+        createdAt: now,
+        updatedAt: now,
+        createdBy: user.uid,
+      });
+      setCartItems([]);
+      setInvoiceDiscountStr("");
+      setHoldCustomerName("");
+      showNotification("تم تعليق الفاتورة", "success");
+      setTimeout(() => barcodeRef.current?.focus(), 50);
+    } catch (e) {
+      console.error(e);
+      showNotification("فشل حفظ الفاتورة المعلقة", "error");
+    } finally {
+      setHolding(false);
+    }
+  };
+
+  const restoreHold = async (holdId) => {
+    if (!user?.uid) return;
+    let docData = heldInvoices.find((h) => h.id === holdId);
+    if (!docData) {
+      try {
+        const snap = await getDoc(doc(firestore, "posHolds", holdId));
+        if (!snap.exists()) {
+          showNotification("الفاتورة غير موجودة", "error");
+          return;
+        }
+        docData = { id: snap.id, ...snap.data() };
+      } catch (e) {
+        console.error(e);
+        showNotification("تعذر تحميل الفاتورة المعلقة", "error");
+        return;
+      }
+    }
+    const rawCart = Array.isArray(docData.cartItems) ? docData.cartItems : [];
+    if (rawCart.length === 0) {
+      showNotification("الفاتورة المعلقة فارغة", "warning");
+      return;
+    }
+    if (cartItems.length > 0) {
+      const ok =
+        typeof window !== "undefined" &&
+        window.confirm(
+          "السلة الحالية تحتوي على أصناف. هل تريد استبدالها بفاتورة المعلقة؟"
+        );
+      if (!ok) return;
+    }
+    try {
+      setHolding(true);
+      await deleteDoc(doc(firestore, "posHolds", holdId));
+    } catch (e) {
+      console.error(e);
+      showNotification("تعذر إزالة الفاتورة المعلقة من السجل", "error");
+      return;
+    } finally {
+      setHolding(false);
+    }
+    const synced = syncCartLinesWithProducts(rawCart, products);
+    setCartItems(synced);
+    setInvoiceDiscountStr(String(docData.invoiceDiscountStr || ""));
+    setHoldCustomerName(String(docData.customerName || ""));
+    showNotification("تم استعادة الفاتورة المعلقة", "success");
+    setTimeout(() => barcodeRef.current?.focus(), 50);
+  };
+
+  const deleteHold = async (holdId) => {
+    if (!user?.uid) return;
+    const ok =
+      typeof window !== "undefined" &&
+      window.confirm("حذف هذه الفاتورة المعلقة نهائياً؟");
+    if (!ok) return;
+    try {
+      await deleteDoc(doc(firestore, "posHolds", holdId));
+      showNotification("تم حذف الفاتورة المعلقة", "success");
+    } catch (e) {
+      console.error(e);
+      showNotification("فشل الحذف", "error");
+    }
+  };
+
+  const sumHoldCartSubtotal = (h) =>
+    (Array.isArray(h.cartItems) ? h.cartItems : []).reduce(
+      (s, it) => s + (it.quantity || 0) * (it.unitPrice || 0),
+      0
+    );
 
   const findProductByBarcode = async (value) => {
     const cleaned = String(value || "").trim();
@@ -723,14 +942,15 @@ export default function POSPage() {
       const invoiceNumber = generateSaleInvoiceNumber();
       const createdAt = new Date().toISOString();
       const productLines = cartItems.filter((it) => it.kind === "product");
-      const totalAmountForReceipt = cartItems.reduce(
+      const subtotalAmount = cartItems.reduce(
         (sum, it) => sum + (it.quantity || 0) * (it.unitPrice || 0),
         0
       );
-      const totalCostForReceipt = cartItems.reduce(
-        (sum, it) => sum + (it.quantity || 0) * (it.costPrice || 0),
-        0
+      const discountAmountApplied = Math.min(
+        Math.max(0, invoiceDiscountAmount),
+        subtotalAmount
       );
+      const finalAmount = Math.max(0, subtotalAmount - discountAmountApplied);
       const itemsForReceipt = cartItems.map((it) => ({
         kind: it.kind,
         nameAr: it.nameAr,
@@ -774,10 +994,6 @@ export default function POSPage() {
         }
 
         const salesRef = collection(firestore, "sales");
-        const totalAmount = cartItems.reduce(
-          (sum, it) => sum + (it.quantity || 0) * (it.unitPrice || 0),
-          0
-        );
         const totalCost = cartItems.reduce(
           (sum, it) => sum + (it.quantity || 0) * (it.costPrice || 0),
           0
@@ -814,7 +1030,9 @@ export default function POSPage() {
         tx.set(doc(salesRef), {
           invoiceNumber,
           items: itemsPayload,
-          totalAmount,
+          subtotal: subtotalAmount,
+          discountAmount: discountAmountApplied,
+          totalAmount: finalAmount,
           totalCost,
           paymentMethod: paymentMethodLabel,
           createdAt,
@@ -826,12 +1044,16 @@ export default function POSPage() {
       const receiptPayload = {
         invoiceNumber,
         createdAt,
-        totalAmount: totalAmountForReceipt,
+        subtotal: subtotalAmount,
+        discountAmount: discountAmountApplied,
+        totalAmount: finalAmount,
         items: itemsForReceipt,
         paymentMethod: paymentMethodLabel,
       };
       printReceiptInWindow(receiptPayload);
       setCartItems([]);
+      setInvoiceDiscountStr("");
+      setHoldCustomerName("");
       setBarcodeInput("");
       setTimeout(() => barcodeRef.current?.focus(), 50);
     } catch (err) {
@@ -1098,93 +1320,193 @@ export default function POSPage() {
             </button>
           </form>
 
+          <div className={styles.holdSection}>
+            <div className={styles.holdCustomerRow}>
+              <label
+                className={styles.holdCustomerLabel}
+                htmlFor="pos-hold-customer"
+              >
+                اسم العميل
+              </label>
+              <input
+                id="pos-hold-customer"
+                type="text"
+                className={styles.holdCustomerInput}
+                value={holdCustomerName}
+                onChange={(e) => setHoldCustomerName(e.target.value)}
+                placeholder="للتعليق أو الاستعادة"
+                autoComplete="name"
+                disabled={submitting || holding}
+              />
+            </div>
+            <button
+              type="button"
+              className={styles.holdButton}
+              onClick={() => void holdCurrentInvoice()}
+              disabled={
+                submitting ||
+                holding ||
+                cartItems.length === 0 ||
+                !user?.uid
+              }
+            >
+              {holding ? (
+                <>
+                  <FaSpinner className={styles.spinner} />
+                  <span>جارٍ التعليق...</span>
+                </>
+              ) : (
+                <>
+                  <FaPause />
+                  <span>تعليق الفاتورة</span>
+                </>
+              )}
+            </button>
+
+            {heldInvoices.length > 0 ? (
+              <div className={styles.heldList}>
+                <div className={styles.heldListTitle}>فواتير معلقة</div>
+                <ul className={styles.heldListUl}>
+                  {heldInvoices.map((h) => {
+                    const sub = sumHoldCartSubtotal(h);
+                    const name = String(h.customerName || "").trim() || "بدون اسم";
+                    const when = h.createdAt
+                      ? new Date(h.createdAt).toLocaleString(locale, {
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "";
+                    return (
+                      <li key={h.id} className={styles.heldItem}>
+                        <div className={styles.heldItemMain}>
+                          <span className={styles.heldItemName}>{name}</span>
+                          <span className={styles.heldItemTotal}>
+                            {formatCurrency(sub)}
+                          </span>
+                          {when ? (
+                            <span className={styles.heldItemTime}>{when}</span>
+                          ) : null}
+                        </div>
+                        <div className={styles.heldItemActions}>
+                          <button
+                            type="button"
+                            className={styles.heldRestoreBtn}
+                            onClick={() => void restoreHold(h.id)}
+                            disabled={submitting || holding}
+                            title="استعادة للسلة"
+                          >
+                            <FaUndo />
+                            <span>استعادة</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.heldDeleteBtn}
+                            onClick={() => void deleteHold(h.id)}
+                            disabled={submitting || holding}
+                            title="حذف"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+
         {cartItems.length === 0 ? (
           <div className={styles.emptyState}>
             <p>السلة فارغة. اختر منتج أو مشروب من الأقسام أو استخدم الباركود.</p>
           </div>
         ) : (
           <div className={styles.cartSection}>
-            <div className={styles.cartTable}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>الصنف</th>
-                    <th>الباركود</th>
-                    <th>الكمية</th>
-                    <th>سعر الوحدة</th>
-                    <th>الإجمالي</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cartItems.map((it) => (
-                    <tr key={it.lineKey}>
-                      <td className={styles.nameCell}>
-                        <div className={styles.nameMain}>{it.nameAr}</div>
-                        <div className={styles.nameSub}>
-                          {it.kind === "product" ? (
-                            <>المتاح: {it.availableQuantity ?? 0}</>
-                          ) : (
-                            <>مشروب</>
-                          )}
-                        </div>
-                      </td>
-                      <td>{it.kind === "product" ? it.barcode : "—"}</td>
-                      <td>
-                        <div className={styles.qtyControls}>
+            <div className={styles.cartCardList}>
+              {cartItems.map((it) => {
+                const lineTotal =
+                  (it.quantity || 0) * (it.unitPrice || 0);
+                return (
+                  <div key={it.lineKey} className={styles.cartCard}>
+                    <div className={styles.cartCardInfo}>
+                      <div className={styles.cartCardTitleRow}>
+                        <div className={styles.cartCardTitleGroup}>
                           <button
                             type="button"
-                            className={styles.qtyBtn}
-                            onClick={() => decQty(it.lineKey)}
-                            disabled={submitting || (it.quantity || 1) <= 1}
-                            title="تقليل"
-                          >
-                            <FaMinus />
-                          </button>
-                          <input
-                            type="number"
-                            className={styles.qtyInput}
-                            value={it.quantity}
-                            min={1}
-                            onChange={(e) =>
-                              setCartItemQuantity(it.lineKey, e.target.value)
-                            }
+                            className={styles.cartCardRemoveIcon}
+                            onClick={() => removeCartItem(it.lineKey)}
                             disabled={submitting}
-                          />
-                          <button
-                            type="button"
-                            className={styles.qtyBtn}
-                            onClick={() => incQty(it.lineKey)}
-                            disabled={
-                              submitting ||
-                              (it.kind === "product" &&
-                                (it.quantity || 0) >= (it.availableQuantity ?? 0))
-                            }
-                            title="زيادة"
+                            title="حذف"
+                            aria-label="حذف من السلة"
                           >
-                            <FaPlus />
+                            <FaTrash />
                           </button>
+                          <span className={styles.cartCardName}>{it.nameAr}</span>
                         </div>
-                      </td>
-                      <td>{formatCurrency(it.unitPrice)}</td>
-                      <td className={styles.totalCell}>
-                        {formatCurrency((it.quantity || 0) * (it.unitPrice || 0))}
-                      </td>
-                      <td>
+                      </div>
+                      <div className={styles.cartCardUnitPrice}>
+                        {formatCurrency(it.unitPrice)}
+                      </div>
+                      <div className={styles.cartCardMeta}>
+                        {it.kind === "product" ? (
+                          <>
+                            <span>
+                              باركود: {it.barcode || "—"}
+                            </span>
+                            <span className={styles.cartCardMetaSep}>·</span>
+                            <span>المتاح: {it.availableQuantity ?? 0}</span>
+                          </>
+                        ) : (
+                          <span>مشروب</span>
+                        )}
+                        <span className={styles.cartCardMetaSep}>·</span>
+                        <span className={styles.cartCardLineTotal}>
+                          إجمالي السطر: {formatCurrency(lineTotal)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={styles.cartCardQty}>
+                      <div className={styles.qtyControls}>
                         <button
                           type="button"
-                          className={styles.removeButton}
-                          onClick={() => removeCartItem(it.lineKey)}
-                          disabled={submitting}
-                          title="حذف"
+                          className={styles.qtyBtn}
+                          onClick={() => decQty(it.lineKey)}
+                          disabled={submitting || (it.quantity || 1) <= 1}
+                          title="تقليل"
                         >
-                          <FaTrash />
+                          <FaMinus />
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <input
+                          type="number"
+                          className={styles.qtyInput}
+                          value={it.quantity}
+                          min={1}
+                          onChange={(e) =>
+                            setCartItemQuantity(it.lineKey, e.target.value)
+                          }
+                          disabled={submitting}
+                        />
+                        <button
+                          type="button"
+                          className={styles.qtyBtn}
+                          onClick={() => incQty(it.lineKey)}
+                          disabled={
+                            submitting ||
+                            (it.kind === "product" &&
+                              (it.quantity || 0) >=
+                                (it.availableQuantity ?? 0))
+                          }
+                          title="زيادة"
+                        >
+                          <FaPlus />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div className={styles.paymentMethodInline}>
@@ -1220,10 +1542,49 @@ export default function POSPage() {
               </ul>
             </div>
 
+            <div className={styles.invoiceDiscountRow}>
+              <label
+                className={styles.invoiceDiscountLabel}
+                htmlFor="pos-invoice-discount"
+              >
+                خصم على إجمالي الفاتورة (ج.م)
+              </label>
+              <input
+                id="pos-invoice-discount"
+                type="number"
+                className={styles.invoiceDiscountInput}
+                min={0}
+                step={1}
+                inputMode="decimal"
+                placeholder="0"
+                value={invoiceDiscountStr}
+                onChange={(e) => setInvoiceDiscountStr(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+
             <div className={styles.footerRow}>
-              <div className={styles.totalSection}>
-                <span className={styles.totalLabel}>الإجمالي:</span>
-                <span className={styles.totalValue}>{formatCurrency(cartTotal)}</span>
+              <div className={styles.invoiceSummary}>
+                <div className={styles.invoiceSummaryRow}>
+                  <span className={styles.invoiceSummaryLabel}>المجموع</span>
+                  <span className={styles.invoiceSummaryValue}>
+                    {formatCurrency(cartTotal)}
+                  </span>
+                </div>
+                {invoiceDiscountAmount > 0 ? (
+                  <div className={styles.invoiceSummaryRow}>
+                    <span className={styles.invoiceSummaryLabel}>الخصم</span>
+                    <span className={styles.invoiceSummaryDiscount}>
+                      −{formatCurrency(invoiceDiscountAmount)}
+                    </span>
+                  </div>
+                ) : null}
+                <div className={styles.totalSection}>
+                  <span className={styles.totalLabel}>الإجمالي النهائي:</span>
+                  <span className={styles.totalValue}>
+                    {formatCurrency(cartFinalTotal)}
+                  </span>
+                </div>
               </div>
               <button
                 type="button"

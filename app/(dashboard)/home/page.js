@@ -57,7 +57,7 @@ function paymentMethodDisplayLabel(inv) {
 }
 
 export default function HomeDashboardPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, logout } = useAuth();
   const role = (profile?.role || "").toLowerCase();
   const isOwner = role === "owner";
   const canManageExpenses = isOwner || role === "manager";
@@ -352,6 +352,11 @@ export default function HomeDashboardPage() {
       setTodayProfit(0);
       await loadStats();
       setShiftCloseOpen(false);
+      try {
+        await logout();
+      } catch (logoutErr) {
+        console.error("خطأ في تسجيل الخروج بعد تقفيل الشيفت", logoutErr);
+      }
     } catch (e) {
       console.error("خطأ في تقفيل الشيفت", e);
     } finally {

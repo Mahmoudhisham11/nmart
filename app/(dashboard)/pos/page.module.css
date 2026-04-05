@@ -92,7 +92,8 @@
   box-sizing: border-box;
 }
 
-.cartColumn .cartTable {
+.cartColumn .cartTable,
+.cartColumn .cartCardList {
   max-width: 100%;
 }
 
@@ -344,6 +345,174 @@
   border-bottom: none;
 }
 
+.cartCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  overflow-x: hidden;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 12px;
+  border-inline-start: 4px solid #2563eb;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme="dark"] .cartCardList {
+  background: #1e293b;
+  border-color: #334155;
+  border-inline-start-color: #3b82f6;
+}
+
+.cartCard {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .cartCard {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.cartCardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.cartCardTitleRow {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.cartCardTitleGroup {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 100%;
+  direction: rtl;
+}
+
+.cartCardName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+  word-break: break-word;
+  min-width: 0;
+}
+
+[data-theme="dark"] .cartCardName {
+  color: #e5e7eb;
+}
+
+.cartCardRemoveIcon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.cartCardRemoveIcon:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+[data-theme="dark"] .cartCardRemoveIcon {
+  color: #f87171;
+}
+
+[data-theme="dark"] .cartCardRemoveIcon:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.2);
+}
+
+.cartCardRemoveIcon:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cartCardUnitPrice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+[data-theme="dark"] .cartCardUnitPrice {
+  color: #94a3b8;
+}
+
+.cartCardMeta {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.45;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+}
+
+[data-theme="dark"] .cartCardMeta {
+  color: #94a3b8;
+}
+
+.cartCardMetaSep {
+  color: #d1d5db;
+  user-select: none;
+}
+
+[data-theme="dark"] .cartCardMetaSep {
+  color: #475569;
+}
+
+.cartCardLineTotal {
+  font-weight: 700;
+  color: #10b981;
+}
+
+[data-theme="dark"] .cartCardLineTotal {
+  color: #34d399;
+}
+
+.cartCardQty {
+  flex-shrink: 0;
+}
+
+.cartCardQty .qtyControls {
+  flex-wrap: nowrap;
+}
+
+.cartCardQty .qtyInput {
+  width: 56px;
+  padding: 6px 6px;
+}
+
+.cartCardQty .qtyBtn {
+  width: 30px;
+  height: 30px;
+  background: #ffffff;
+}
+
+[data-theme="dark"] .cartCardQty .qtyBtn {
+  background: #1e293b;
+}
+
 .nameCell {
   min-width: 200px;
 }
@@ -470,6 +639,250 @@
   cursor: not-allowed;
 }
 
+/* Hold invoices (POS) */
+.holdSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.holdCustomerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.holdCustomerLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+[data-theme="dark"] .holdCustomerLabel {
+  color: #cbd5e1;
+}
+
+.holdCustomerInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .holdCustomerInput {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+.holdCustomerInput:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.holdButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] .holdButton {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.holdButton:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+[data-theme="dark"] .holdButton:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.28);
+}
+
+.holdButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.heldList {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px 10px 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .heldList {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.heldListTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 8px;
+  padding-inline: 2px;
+}
+
+[data-theme="dark"] .heldListTitle {
+  color: #e5e7eb;
+}
+
+.heldListUl {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.heldItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+[data-theme="dark"] .heldItem {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.heldItemMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: right;
+}
+
+.heldItemName {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+[data-theme="dark"] .heldItemName {
+  color: #e5e7eb;
+}
+
+.heldItemTotal {
+  font-size: 14px;
+  font-weight: 900;
+  color: #ea580c;
+}
+
+.heldItemTime {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .heldItemTime {
+  color: #94a3b8;
+}
+
+.heldItemActions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.heldRestoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+[data-theme="dark"] .heldRestoreBtn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+.heldRestoreBtn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .heldRestoreBtn:hover:not(:disabled) {
+  background: #334155;
+}
+
+.heldDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  border: none;
+  background: #fee2e2;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+[data-theme="dark"] .heldDeleteBtn {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+}
+
+.heldDeleteBtn:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.heldRestoreBtn:disabled,
+.heldDeleteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cartColumn .holdSection {
+  max-width: 100%;
+}
+
 /* Footer */
 .footerRow {
   display: flex;
@@ -477,6 +890,103 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.invoiceDiscountRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .invoiceDiscountRow {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.invoiceDiscountLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+[data-theme="dark"] .invoiceDiscountLabel {
+  color: #cbd5e1;
+}
+
+.invoiceDiscountInput {
+  width: 100%;
+  max-width: 220px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme="dark"] .invoiceDiscountInput {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+.invoiceDiscountInput:focus {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.12);
+}
+
+.invoiceSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.invoiceSummaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.invoiceSummaryLabel {
+  font-weight: 600;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .invoiceSummaryLabel {
+  color: #94a3b8;
+}
+
+.invoiceSummaryValue {
+  font-weight: 700;
+  color: #111827;
+}
+
+[data-theme="dark"] .invoiceSummaryValue {
+  color: #e5e7eb;
+}
+
+.invoiceSummaryDiscount {
+  font-weight: 800;
+  color: #dc2626;
+}
+
+[data-theme="dark"] .invoiceSummaryDiscount {
+  color: #f87171;
+}
+
+.invoiceSummary .totalSection {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .totalSection {
@@ -914,7 +1424,7 @@
   align-content: start;
   gap: 12px 12px;
   padding: 4px 4px 12px 4px;
-  align-items: start;
+  align-items: stretch;
   box-sizing: border-box;
 }
 
@@ -932,8 +1442,8 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   width: 100%;
   min-width: 0;
-  min-height: max-content;
-  height: auto;
+  min-height: 0;
+  height: 100%;
   box-sizing: border-box;
   flex-shrink: 0;
   font: inherit;
@@ -960,8 +1470,9 @@
   padding: 13px 14px 12px;
   width: 100%;
   min-width: 0;
-  min-height: max-content;
-  flex: 0 0 auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
   box-sizing: border-box;
 }
 
@@ -975,7 +1486,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: 5px;
-  margin-top: 4px;
+  margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid rgba(226, 232, 240, 0.95);
 }
