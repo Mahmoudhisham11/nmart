@@ -238,7 +238,7 @@ export default function POSPage() {
       --accent-dark: #000000;
       --accent-soft: #f0f0f0;
     }
-    @page { size: 80mm auto; margin: 3mm; }
+    @page { size: 80mm auto; margin: 2mm; }
     * {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
@@ -250,8 +250,8 @@ export default function POSPage() {
       font-family: Tahoma, Arial, "Segoe UI", sans-serif;
       font-weight: 800;
       color: var(--ink);
-      font-size: 12px;
-      line-height: 1.45;
+      font-size: 9px;
+      line-height: 1.25;
     }
     .receipt {
       width: 80mm;
@@ -261,19 +261,19 @@ export default function POSPage() {
       padding: 0;
       color: var(--ink);
       background: #fff;
-      border-radius: 12px;
+      border-radius: 8px;
       overflow: hidden;
       border: 2px solid #000;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     }
     .receipt-topbar {
-      height: 6px;
+      height: 3px;
       background: #000;
     }
-    .receipt-inner { padding: 12px 8px 14px; }
-    .logo-wrap { text-align: center; margin-bottom: 8px; }
+    .receipt-inner { padding: 5px 6px 6px; }
+    .logo-wrap { text-align: center; margin-bottom: 3px; }
     .logo {
-      max-width: 92px;
+      max-width: 64px;
       width: 100%;
       height: auto;
       display: block;
@@ -282,60 +282,60 @@ export default function POSPage() {
     }
     .doc-title {
       text-align: center;
-      font-size: 14px;
+      font-size: 10px;
       font-weight: 900;
       color: #000;
-      letter-spacing: 0.04em;
-      margin: 0 0 10px;
+      letter-spacing: 0.03em;
+      margin: 0 0 4px;
     }
     .meta {
-      font-size: 12px;
+      font-size: 9px;
       font-weight: 800;
-      line-height: 1.5;
-      margin-bottom: 10px;
+      line-height: 1.3;
+      margin-bottom: 4px;
       background: #fff;
-      border-radius: 8px;
-      padding: 8px 8px;
+      border-radius: 5px;
+      padding: 4px 5px;
       border: 2px solid #000;
     }
     .meta-row {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      gap: 8px;
-      padding: 6px 0;
-      border-bottom: 2px solid #000;
+      gap: 4px;
+      padding: 2px 0;
+      border-bottom: 1px solid #000;
     }
     .meta-row:last-child { border-bottom: none; }
     .meta-row span:first-child {
       color: #000;
       font-weight: 900;
-      font-size: 12px;
+      font-size: 9px;
     }
     .meta-row strong {
       font-weight: 900;
       color: #000;
       text-align: left;
-      font-size: 12px;
+      font-size: 9px;
     }
     .meta-row--pay {
-      margin-top: 2px;
-      padding-top: 8px;
-      border-top: 2px solid #000;
-      border-bottom: 2px solid #000;
+      margin-top: 0;
+      padding-top: 3px;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
     }
-    .meta-row--pay span:first-child { font-size: 13px; }
-    .meta-row--pay strong { font-size: 14px; }
+    .meta-row--pay span:first-child { font-size: 9px; }
+    .meta-row--pay strong { font-size: 10px; }
     .divider {
-      height: 2px;
+      height: 1px;
       background: #000;
-      margin: 10px 0;
+      margin: 4px 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      font-size: 12px;
+      font-size: 9px;
       font-weight: 800;
       border: 2px solid #000;
     }
@@ -343,13 +343,13 @@ export default function POSPage() {
       background: #000;
       color: #fff;
       font-weight: 900;
-      font-size: 12px;
-      padding: 10px 4px;
+      font-size: 9px;
+      padding: 4px 2px;
       text-align: center;
-      border: 2px solid #000;
+      border: 1px solid #000;
     }
     tbody td {
-      padding: 8px 4px;
+      padding: 3px 2px;
       text-align: center;
       border: 1px solid #000;
       vertical-align: middle;
@@ -361,44 +361,45 @@ export default function POSPage() {
     .col-qty { width: 14%; font-weight: 900; }
     .col-total { text-align: left !important; width: 30%; font-weight: 900; }
     .total-box {
-      margin-top: 12px;
-      padding: 12px 10px;
-      border-radius: 8px;
+      margin-top: 5px;
+      padding: 5px 6px;
+      border-radius: 5px;
       background: #fff;
-      border: 3px solid #000;
+      border: 2px solid #000;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
     }
     .total-box span:first-child {
-      font-size: 14px;
+      font-size: 10px;
       font-weight: 900;
       color: #000;
     }
     .total-box .amount {
-      font-size: 17px;
+      font-size: 12px;
       font-weight: 900;
       color: #000;
     }
     .thanks {
-      margin-top: 14px;
+      margin-top: 5px;
       text-align: center;
-      font-size: 13px;
+      font-size: 9px;
       font-weight: 900;
       color: #000;
-      padding: 8px 4px 4px;
-      border-top: 2px solid #000;
+      padding: 4px 2px 2px;
+      border-top: 1px solid #000;
     }
     .dev-credit {
-      margin-top: 10px;
+      margin-top: 3px;
       text-align: center;
-      font-size: 10px;
+      font-size: 7px;
       font-weight: 900;
       color: #000;
-      padding-top: 8px;
+      padding-top: 3px;
       border-top: 1px solid #000;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.01em;
+      font-family: Arial, Tahoma, sans-serif;
     }
     @media print {
       html, body { background: #fff; font-weight: 800; }
@@ -431,7 +432,7 @@ export default function POSPage() {
         <span class="amount">${escapeHtml(formatCurrency(receipt.totalAmount))}</span>
       </div>
       <div class="thanks">شكراً لتعاملكم معنا</div>
-      <div class="dev-credit">تم التطوير بواسطة devoria.com</div>
+      <div class="dev-credit">Developed By: devoria.com</div>
     </div>
   </div>
 </body>
