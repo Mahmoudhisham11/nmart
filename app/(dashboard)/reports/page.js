@@ -169,10 +169,10 @@ function buildReportDayCategoriesPrintHtml({
       .map(
         (row) =>
           `<tr>
-        <td>${escapeHtmlPrint(row.kind === "drink" ? "مشروب" : "منتج")}</td>
-        <td>${escapeHtmlPrint(row.nameAr)}</td>
-        <td>${escapeHtmlPrint(String(row.quantity))}</td>
-        <td>${escapeHtmlPrint(formatMoney(row.revenue))}</td>
+        <td class="col-kind">${escapeHtmlPrint(row.kind === "drink" ? "مشروب" : "منتج")}</td>
+        <td class="col-name">${escapeHtmlPrint(row.nameAr)}</td>
+        <td class="col-qty">${escapeHtmlPrint(String(row.quantity))}</td>
+        <td class="col-rev">${escapeHtmlPrint(formatMoney(row.revenue))}</td>
       </tr>`
       )
       .join("");
@@ -196,18 +196,116 @@ function buildReportDayCategoriesPrintHtml({
   <meta charset="utf-8" />
   <title>تقرير أقسام ${escapeHtmlPrint(reportDate)}</title>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, Tahoma, sans-serif; padding: 20px; color: #111; max-width: 720px; margin: 0 auto; }
-    h1 { font-size: 20px; margin: 0 0 8px; }
-    .meta { color: #6b7280; font-size: 13px; margin-bottom: 16px; }
-    h2 { font-size: 16px; margin: 20px 0 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
-    th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: right; }
-    th { background: #f3f4f6; font-weight: 800; }
-    tfoot .subtotal td { font-weight: 800; }
-    .grand { margin-top: 24px; padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 15px; }
-    .grand div { margin-bottom: 6px; }
-    @media print { body { padding: 12px; } }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: Tahoma, Arial, "Segoe UI", sans-serif;
+      padding: 6px 8px;
+      margin: 0 auto;
+      max-width: 720px;
+      color: #000;
+      background: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    h1 {
+      font-size: 11px;
+      font-weight: 900;
+      margin: 0 0 4px;
+      color: #000;
+      border-bottom: 2px solid #000;
+      padding-bottom: 3px;
+    }
+    .meta {
+      color: #000;
+      font-size: 8px;
+      font-weight: 800;
+      margin: 0 0 6px;
+    }
+    .meta strong { font-weight: 900; }
+    .sec { margin-bottom: 6px; }
+    h2 {
+      font-size: 9px;
+      font-weight: 900;
+      margin: 5px 0 2px;
+      padding: 3px 4px;
+      color: #fff;
+      background: #000;
+      border: 1px solid #000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 8px;
+      font-weight: 800;
+      margin: 0 0 4px;
+      border: 2px solid #000;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 2px 4px;
+      text-align: right;
+      vertical-align: middle;
+      color: #000;
+    }
+    thead th {
+      background: #000;
+      color: #fff;
+      font-weight: 900;
+      font-size: 8px;
+      padding: 3px 3px;
+    }
+    tbody td { background: #fff; }
+    tbody tr:nth-child(even) td { background: #f0f0f0; }
+    tfoot th, tfoot td {
+      font-weight: 900;
+      font-size: 8px;
+      border: 1px solid #000;
+      background: #e8e8e8;
+    }
+    .col-kind {
+      width: 11%;
+      white-space: nowrap;
+      text-align: center !important;
+    }
+    .col-name {
+      width: 48%;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-size: 8px;
+      line-height: 1.15;
+    }
+    .col-qty {
+      width: 12%;
+      white-space: nowrap;
+      text-align: center !important;
+      font-weight: 900;
+    }
+    .col-rev {
+      width: 29%;
+      white-space: nowrap;
+      text-align: left !important;
+      font-weight: 900;
+    }
+    .grand {
+      margin-top: 6px;
+      padding: 5px 6px;
+      background: #f5f5f5;
+      border: 2px solid #000;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 900;
+    }
+    .grand div { margin: 0 0 2px; }
+    .grand div:last-child { margin-bottom: 0; }
+    @media print {
+      body { padding: 4mm 5mm; }
+    }
   </style>
 </head>
 <body>

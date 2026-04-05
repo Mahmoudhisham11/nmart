@@ -753,7 +753,7 @@
 
 /* Shift close summary modal (matches print content only) */
 .shiftCloseModal {
-  max-width: 480px;
+  max-width: 340px;
 }
 
 .shiftCloseBody {
@@ -761,10 +761,10 @@
 }
 
 .shiftCloseHint {
-  margin: 0 0 14px;
-  font-size: 13px;
+  margin: 0 0 10px;
+  font-size: 11px;
   color: #6b7280;
-  line-height: 1.65;
+  line-height: 1.45;
 }
 
 [data-theme="dark"] .shiftCloseHint {
@@ -774,40 +774,66 @@
 .shiftSummaryPrintTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  table-layout: fixed;
+  font-size: 11px;
+  border: 2px solid #000;
 }
 
 .shiftSummaryPrintTable th,
 .shiftSummaryPrintTable td {
-  border: 1px solid #e5e7eb;
-  padding: 12px 14px;
+  border: 1px solid #000;
+  padding: 5px 7px;
   text-align: right;
+  vertical-align: middle;
 }
 
 .shiftSummaryPrintTable th {
-  background: #f3f4f6;
-  font-weight: 700;
-  width: 55%;
-  color: #374151;
+  width: 58%;
+  background: #000;
+  font-weight: 900;
+  color: #fff;
 }
 
 .shiftSummaryPrintTable td {
-  font-weight: 800;
+  font-weight: 900;
   color: #111827;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.shiftSummaryPrintTable tbody tr:nth-child(even) th {
+  background: #1a1a1a;
+}
+
+.shiftSummaryPrintTable tbody tr:nth-child(even) td {
+  background: #f3f4f6;
+}
+
+[data-theme="dark"] .shiftSummaryPrintTable {
+  border-color: #e2e8f0;
 }
 
 [data-theme="dark"] .shiftSummaryPrintTable th,
 [data-theme="dark"] .shiftSummaryPrintTable td {
-  border-color: #334155;
+  border-color: #94a3b8;
 }
 
 [data-theme="dark"] .shiftSummaryPrintTable th {
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #0f172a;
+  color: #f8fafc;
 }
 
 [data-theme="dark"] .shiftSummaryPrintTable td {
   color: #e5e7eb;
+  background: #1e293b;
+}
+
+[data-theme="dark"] .shiftSummaryPrintTable tbody tr:nth-child(even) th {
+  background: #020617;
+}
+
+[data-theme="dark"] .shiftSummaryPrintTable tbody tr:nth-child(even) td {
+  background: #334155;
 }
 
 .shiftCloseFooter {
