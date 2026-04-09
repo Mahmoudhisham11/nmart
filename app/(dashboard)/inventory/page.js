@@ -75,13 +75,18 @@ export default function InventoryPage() {
           typeof p.quantity === "number"
             ? p.quantity
             : Number(p.quantity || 0) || 0;
+        const sold = soldMap.get(p.id) ?? 0;
+        const costPrice = Number(p.costPrice || 0);
+        const sellingPrice = Number(p.sellingPrice || 0);
+        const profitFromSold = sold * (sellingPrice - costPrice);
         return {
           id: p.id,
           nameAr: p.nameAr || p.name || "—",
           barcode: String(p.barcode || "").trim(),
           category: String(p.category || "").trim(),
-          sold: soldMap.get(p.id) ?? 0,
+          sold,
           remaining,
+          profitFromSold,
         };
       });
 
@@ -142,6 +147,13 @@ export default function InventoryPage() {
       maximumFractionDigits: 0,
     }).format(Number(n) || 0);
 
+  const formatMoney = (n) =>
+    new Intl.NumberFormat("ar-EG-u-nu-latn", {
+      style: "currency",
+      currency: "EGP",
+      maximumFractionDigits: 0,
+    }).format(Number(n) || 0);
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.card}>
@@ -156,6 +168,9 @@ export default function InventoryPage() {
         <p className={styles.hintNote}>
           إذا عدّلت الكمية يدويًا من صفحة المنتجات، قد لا يتطابق مجموع «المباع +
           المتبقي» مع رصيد سابق — الأرقام مبنية على الفواتير والمخزون الحالي.
+        </p>
+        <p className={styles.hintNote}>
+          ربح المباع = (سعر البيع - التكلفة) × كمية المباع.
         </p>
 
         <div className={styles.filterRow}>
@@ -216,6 +231,7 @@ export default function InventoryPage() {
                   <th>الباركود</th>
                   <th>القسم</th>
                   <th>المباع</th>
+                  <th>ربح المباع</th>
                   <th>المتبقي</th>
                 </tr>
               </thead>
@@ -226,6 +242,13 @@ export default function InventoryPage() {
                     <td>{r.barcode || "—"}</td>
                     <td>{r.category || "—"}</td>
                     <td className={styles.numCell}>{formatQty(r.sold)}</td>
+                    <td
+                      className={`${styles.numCell} ${
+                        r.profitFromSold < 0 ? styles.lossCell : styles.profitCell
+                      }`}
+                    >
+                      {formatMoney(r.profitFromSold)}
+                    </td>
                     <td className={styles.numCell}>{formatQty(r.remaining)}</td>
                   </tr>
                 ))}

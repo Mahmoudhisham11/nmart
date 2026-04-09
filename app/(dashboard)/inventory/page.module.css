@@ -247,6 +247,22 @@
   color: #ea580c;
 }
 
+.profitCell {
+  color: #059669;
+}
+
+[data-theme="dark"] .profitCell {
+  color: #34d399;
+}
+
+.lossCell {
+  color: #dc2626;
+}
+
+[data-theme="dark"] .lossCell {
+  color: #f87171;
+}
+
 .footerMeta {
   margin: 14px 0 0;
   font-size: 13px;

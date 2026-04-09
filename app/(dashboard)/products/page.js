@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import {
@@ -52,6 +52,7 @@ export default function ProductsPage() {
 
   // "" = الكل, "__no_category__" = بدون قسم
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [confirmDeleting, setConfirmDeleting] = useState(false);
@@ -82,13 +83,64 @@ export default function ProductsPage() {
     (p) => !String(p.category || "").trim()
   );
 
+  const filteredProducts = useMemo(() => {
+    const cat = String(selectedCategory || "").trim();
+    const queryText = String(searchTerm || "").trim().toLowerCase();
+
+    return products.filter((p) => {
+      const pCat = String(p.category || "").trim();
+      const inCategory =
+        !cat || (cat === "__no_category__" ? !pCat : pCat === cat);
+      if (!inCategory) return false;
+
+      if (!queryText) return true;
+      const name = String(p.nameAr || p.name || "").toLowerCase();
+      const barcode = String(p.barcode || "").toLowerCase();
+      return name.includes(queryText) || barcode.includes(queryText);
+    });
+  }, [products, selectedCategory, searchTerm]);
+
+  const summaryTotals = useMemo(() => {
+    return filteredProducts.reduce(
+      (acc, p) => {
+        const qty = Number(p.quantity || 0);
+        const cost = Number(p.costPrice || 0);
+        const sell = Number(p.sellingPrice || 0);
+        acc.totalWholesale += qty * cost;
+        acc.totalSelling += qty * sell;
+        acc.totalQuantity += qty;
+        return acc;
+      },
+      { totalWholesale: 0, totalSelling: 0, totalQuantity: 0 }
+    );
+  }, [filteredProducts]);
+
+  const formatNumber = (n) =>
+    new Intl.NumberFormat("ar-EG-u-nu-latn", {
+      maximumFractionDigits: 0,
+    }).format(Number(n || 0));
+
   const loadProducts = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const snap = await getDocs(collection(firestore, "products"));
       const list = [];
-      snap.forEach((row) => list.push({ id: row.id, ...row.data() }));
+      const zeroQtyIds = [];
+      snap.forEach((row) => {
+        const data = row.data();
+        const qty = Number(data?.quantity || 0);
+        if (qty === 0) {
+          zeroQtyIds.push(row.id);
+          return;
+        }
+        list.push({ id: row.id, ...data });
+      });
+      if (zeroQtyIds.length > 0) {
+        await Promise.all(
+          zeroQtyIds.map((id) => deleteDoc(doc(firestore, "products", id)))
+        );
+      }
       list.sort((a, b) =>
         (a.nameAr || a.name || "").localeCompare(b.nameAr || b.name || "", "ar")
       );
@@ -262,11 +314,18 @@ export default function ProductsPage() {
     setError("");
     try {
       const now = new Date().toISOString();
+      const nextQty = Number(form.quantity) || 0;
+      if (nextQty === 0) {
+        await deleteDoc(doc(firestore, "products", editingId));
+        setProducts((prev) => prev.filter((x) => x.id !== editingId));
+        closeEdit();
+        return;
+      }
       await updateDoc(doc(firestore, "products", editingId), {
         nameAr,
         barcode: form.barcode.trim(),
         category,
-        quantity: Number(form.quantity) || 0,
+        quantity: nextQty,
         costPrice: Number(form.costPrice) || 0,
         sellingPrice: Number(form.sellingPrice) || 0,
         lowStockThreshold:
@@ -283,7 +342,7 @@ export default function ProductsPage() {
                 nameAr,
                 barcode: form.barcode.trim(),
                 category,
-                quantity: Number(form.quantity) || 0,
+                quantity: nextQty,
                 costPrice: Number(form.costPrice) || 0,
                 sellingPrice: Number(form.sellingPrice) || 0,
                 lowStockThreshold:
@@ -453,13 +512,50 @@ export default function ProductsPage() {
             </div>
           )
         ) : null}
+        <div className={styles.searchAndSummary}>
+          <div className={styles.searchWrap}>
+            <input
+              type="text"
+              className={styles.searchInput}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="ابحث باسم المنتج أو الباركود..."
+              autoComplete="off"
+            />
+          </div>
+
+          <div className={styles.summaryGrid}>
+            <div className={styles.summaryCard}>
+              <span className={styles.summaryLabel}>إجمالي سعر الجملة</span>
+              <span className={styles.summaryValue}>
+                {formatNumber(summaryTotals.totalWholesale)}
+              </span>
+            </div>
+            <div className={styles.summaryCard}>
+              <span className={styles.summaryLabel}>إجمالي سعر البيع</span>
+              <span className={styles.summaryValue}>
+                {formatNumber(summaryTotals.totalSelling)}
+              </span>
+            </div>
+            <div className={styles.summaryCard}>
+              <span className={styles.summaryLabel}>إجمالي الكمية</span>
+              <span className={styles.summaryValue}>
+                {formatNumber(summaryTotals.totalQuantity)}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {error ? <p className={styles.error}>{error}</p> : null}
         {loading ? <p className={styles.muted}>جارٍ التحميل...</p> : null}
         {!loading && products.length === 0 ? (
           <p className={styles.muted}>لا توجد منتجات مسجلة. استخدم &quot;إضافة منتجات&quot;.</p>
         ) : null}
+        {!loading && products.length > 0 && filteredProducts.length === 0 ? (
+          <p className={styles.muted}>لا توجد نتائج مطابقة للبحث الحالي.</p>
+        ) : null}
 
-        {!loading && products.length > 0 ? (
+        {!loading && filteredProducts.length > 0 ? (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -475,15 +571,7 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  const cat = String(selectedCategory || "").trim();
-                  const filtered = products.filter((p) => {
-                    const pCat = String(p.category || "").trim();
-                    if (!cat) return true;
-                    if (cat === "__no_category__") return !pCat;
-                    return pCat === cat;
-                  });
-                  return filtered.map((p) => (
+                {filteredProducts.map((p) => (
                   <tr key={p.id}>
                     <td>{p.nameAr || p.name || "—"}</td>
                     <td>{p.barcode || "—"}</td>
@@ -511,8 +599,7 @@ export default function ProductsPage() {
                       </button>
                     </td>
                   </tr>
-                  ));
-                })()}
+                ))}
               </tbody>
             </table>
           </div>
